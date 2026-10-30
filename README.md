@@ -15,6 +15,8 @@ It is a UI-focused version of the logic used in **MacUtil**.
 ## Features
 
 - **Native look:** built with PySide6 (Qt) for a smooth desktop experience.
+- **Light & dark themes:** toggle with the sidebar button or `Ctrl+D`; the choice is remembered between runs.
+- **Real app icons:** pulled from your icon theme, with a drawn initials placeholder when the theme has no match.
 - **Auto-detection:** detects your distribution and picks the right package manager (`apt`, `dnf`, `pacman`, `zypper`).
 - **Multi-format support:** install from native repositories, **Flatpak** or **Snap**.
 - **Non-blocking installs:** installations run in a background thread, so the window never freezes.
@@ -66,6 +68,7 @@ Apps live in `catalogue.json`:
 
 - `package_type` may be `native` (uses the detected system manager), `flatpak` or `snap`.
 - `package_name` is the name used by the underlying manager.
+- `icon` (optional) is a freedesktop icon name, e.g. `"org.videolan.VLC"`. Without it the app tries a list of known names and finally falls back to the app's initials.
 
 ## Project structure
 
@@ -76,6 +79,8 @@ core/system_info.py      # distro + package manager detection, command building
 core/installer.py        # command execution, streaming and installed checks
 core/catalogue_loader.py # catalogue loading/normalisation
 ui/main_window.py        # PySide6 interface and background workers
+ui/theme.py              # light/dark palettes, global QSS, saved preference
+ui/icons.py              # icon theme lookup + generated fallback
 ```
 
 ## Supported distributions
