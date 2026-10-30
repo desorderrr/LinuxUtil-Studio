@@ -72,8 +72,24 @@ step "Games and launchers (Flatpak)"
 install_flatpaks com.valvesoftware.Steam com.heroicgameslauncher.hgl com.usebottles.bottles org.prismlauncher.PrismLauncher
 
 step "Done"
-if (( ${#FAILED[@]} )); then
-    printf '[!] Finished with %d skipped item(s): %s\n' "${#FAILED[@]}" "${FAILED[*]}" >&2
+if (( DRY_RUN )); then
+    printf '[+] Preview finished -- nothing was changed.\n'
+    exit 0
+fi
+
+missing=()
+for bin in lutris mangohud; do
+    command -v "$bin" >/dev/null 2>&1 || missing+=("$bin")
+done
+
+if (( ${#missing[@]} )); then
+    printf '[!] Core gaming tools are missing: %s\n' "${missing[*]}" >&2
+    (( ${#FAILED[@]} )) && printf '[!] Skipped: %s\n' "${FAILED[*]}" >&2
     exit 1
+fi
+
+if (( ${#FAILED[@]} )); then
+    printf '[i] Pack installed, %d optional item(s) skipped: %s\n' \
+        "${#FAILED[@]}" "${FAILED[*]}"
 fi
 printf '[+] Gaming pack ready. Log out and back in so GameMode and MangoHud pick up your user groups.\n'
