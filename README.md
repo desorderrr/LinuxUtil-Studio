@@ -1,62 +1,185 @@
-# LinuxUtil Studio
+<div align="center">
+  <img src="assets/banner.svg" alt="LinuxUtil Studio — install your Linux essentials, preview every command" width="100%">
+</div>
 
-**The Linux setup app, rebuilt.**
+<br>
 
-A native-looking Linux app that installs your everyday tools with your system's package manager — and shows you exactly what it is doing.
+<div align="center">
+
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+[![PySide6](https://img.shields.io/badge/PySide6-6.x-41CD52?style=flat-square&logo=qt&logoColor=white)](https://pypi.org/project/PySide6/)
+[![Platform](https://img.shields.io/badge/platform-Linux-FCC624?style=flat-square&logo=linux&logoColor=black)](#supported-distributions)
+[![Catalogue](https://img.shields.io/badge/catalogue-55_apps-0a84ff?style=flat-square)](catalogue.json)
+[![License](https://img.shields.io/badge/license-MIT-2ea043?style=flat-square)](LICENSE)
+
+</div>
+
+<h3 align="center">Pick the apps. Watch the install. Keep the receipts.</h3>
+
+<p align="center">
+  A native PySide6 app that installs your everyday Linux tools with <b>your</b> package manager —
+  and streams every command to a console you can actually read.
+</p>
 
 ---
 
-## Why
+| | |
+| :--- | :--- |
+| **Catalogue** | 55 apps in 9 categories, each with its own package name |
+| **Managers** | `apt` · `dnf` · `pacman` · `zypper` · Flatpak · Snap |
+| **Gaming** | One-click packs for Fedora, Ubuntu/Debian and Arch/CachyOS |
+| **Interface** | Python 3 + PySide6 (Qt 6), light & dark themes, bundled brand logos |
+| **Safety** | No shell, no stored passwords, `--dry-run` preview for every setup script |
+| **License** | MIT |
 
-Setting up a new Linux machine is a list of downloads, a handful of `apt` or `dnf` commands and a browser tab you forgot to close. LinuxUtil Studio turns that list into a single window: pick what you want, click **Install**, watch it happen.
+## Contents
 
-It is a UI-focused version of the logic used in **MacUtil**.
+| | |
+| :--- | :--- |
+| [Screenshots](#screenshots) | [Command line](#command-line) |
+| [Why LinuxUtil Studio](#why-linuxutil-studio) | [The catalogue](#the-catalogue) |
+| [Features](#features) | [Gaming packs](#gaming-packs) |
+| [Quick start](#quick-start) | [How it works](#how-it-works) |
+| [Using the app](#using-the-app) | [Supported distributions](#supported-distributions) |
+| [Permissions & security](#permissions--security) | [Project structure](#project-structure) |
+| [Development](#development) | [FAQ & troubleshooting](#faq--troubleshooting) |
+| [Roadmap](#roadmap) | [Credits](#credits) |
+
+## Screenshots
+
+| Light | Dark |
+| :---: | :---: |
+| ![Light theme](assets/screenshots/main-light.png) | ![Dark theme](assets/screenshots/main-dark.png) |
+| *The whole catalogue in one grid.* | *The same window in dark mode.* |
+
+| Gaming category | Preview before installing |
+| :---: | :---: |
+| ![Gaming category](assets/screenshots/gaming-dark.png) | ![Preview console](assets/screenshots/preview-dark.png) |
+| *Gaming apps plus the one-click setup pack.* | *`--dry-run` output: every command, zero changes.* |
+
+## Why LinuxUtil Studio
+
+Setting up a new Linux machine is a list of downloads, a handful of `apt` or
+`dnf` commands, and a browser tab you forgot to close. LinuxUtil Studio turns
+that list into a single window: pick what you want, click **Install**, watch it
+happen.
+
+It keeps the logic of **MacUtil** — detect the system, resolve the right
+package, run the install, show the log — and rebuilds it as a native Linux app.
+No hidden shell scripts for normal apps, no fake progress bars: you see the
+exact command that is running and every line it prints.
 
 ## Features
 
-- **Native look:** built with PySide6 (Qt) for a smooth desktop experience.
-- **Light & dark themes:** toggle with the sidebar button or `Ctrl+D`; the choice is remembered between runs.
-- **55 apps, real logos:** brand logos are bundled as SVG, with your icon theme and a drawn initials tile as fallbacks.
-- **Auto-detection:** detects your distribution and picks the right package manager (`apt`, `dnf`, `pacman`, `zypper`).
-- **Per-distro package names:** one catalogue entry, the correct package for your family (`libreoffice` vs `libreoffice-fresh`, `docker.io` vs `moby-engine`…).
-- **Multi-format support:** install from native repositories, **Flatpak** or **Snap**.
-- **Gaming packs:** one-click gaming setup scripts for Fedora, Ubuntu/Debian and Arch/CachyOS, with a **Preview** button that prints every command before anything runs.
-- **Non-blocking installs:** installations run in a background thread, so the window never freezes.
-- **Live logs:** every line of output is streamed to the console in real time, with colour coding.
-- **Installed detection:** apps already present on the system are flagged automatically.
-- **Search & filter:** find apps by name, description or category and narrow down by category.
+**Installing**
 
-## Installation & Running
+- **Native first.** Installs through your distribution's own package manager
+  instead of bypassing it, so updates and dependencies stay normal.
+- **Per-distro package names.** One catalogue entry, the right package
+  everywhere: `libreoffice` / `libreoffice-fresh`, `docker.io` / `moby-engine`,
+  `python3` / `python`.
+- **Flatpak and Snap** for apps that are only distributed that way, plus native
+  Flatpak detection.
+- **Installed detection.** Apps already on the system get a green *Installed*
+  badge when the window opens.
+- **Background installs.** Everything runs off the UI thread, so the window
+  never freezes, and output is streamed line by line.
+- **Safe failure messages.** `pkexec` cancellations, missing Flatpak and
+  unsupported distros get a readable explanation instead of a raw exit code.
 
-### Prerequisites
-- Python 3.10+
-- A native package manager (`apt`, `dnf`, `pacman` or `zypper`)
-- Optional: `flatpak` and/or `snap` for the apps that use those formats
+**Interface**
 
-### Setup
+- **Light & dark themes**, remembered between runs (`Ctrl+D`).
+- **Real brand logos** bundled as SVG, with the desktop icon theme and drawn
+  initials as fallbacks.
+- **Search and categories** with live counts; searching also matches the
+  category name.
+- **One console, only when needed.** It stays hidden until the first install,
+  then shows colour-coded output.
+- **Only the active card says "Working…"** — everything else is simply
+  disabled.
+
+**Gaming**
+
+- **Three setup scripts** for Fedora, Ubuntu/Debian and Arch/CachyOS, all
+  idempotent and readable.
+- **Preview button** that runs them with `--dry-run`: no root, no changes.
+- **Steam via Flatpak on purpose**, so the scripts never touch RPM Fusion,
+  i386 multiarch or `[multilib]`.
+
+## Quick start
 
 ```bash
-git clone https://github.com/desorderrr/LinuxUtil-Studio.git
+git clone git@github.com:desorderrr/LinuxUtil-Studio.git
 cd LinuxUtil-Studio
+
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+
 python3 main.py
 ```
 
-## CLI usage
+**Requirements**
 
-The backend also works without a GUI:
+- Python **3.10+** and a desktop session (X11 or Wayland).
+- One native manager: `apt`, `dnf`, `pacman` or `zypper`.
+- Optional: `flatpak` and/or `snap` for the apps distributed that way.
+- `polkit` (`pkexec`) for the graphical password prompt — present on virtually
+  every desktop distribution.
+
+> **Why a virtualenv?** Several distributions (Fedora, recent Debian/Ubuntu)
+> mark the system Python as externally managed, so `pip install --user` can
+> refuse to run. A venv is one command and keeps PySide6 out of the system.
+
+The app needs **no root to start** — only the package manager asks for your
+password, through the desktop's own polkit dialog.
+
+## Using the app
+
+1. **Browse or search.** Use the sidebar categories or type in the search box;
+   both filter instantly.
+2. **Click Install.** The card shows *Working…*, the console slides up and the
+   log streams live.
+3. **Authenticate.** Your desktop shows its standard password dialog (polkit).
+   The app never sees or stores the password.
+4. **Done.** The card turns into *Reinstall* and gets the *Installed* badge.
+
+| Shortcut | Action |
+| :--- | :--- |
+| `Ctrl+D` | Toggle light / dark theme |
+| Search box | Filter by name, description or category |
+| Category list | Show a single category |
+
+<img src="assets/screenshots/search-light.png" alt="Searching for media apps" width="760">
+
+## Command line
+
+The backend works without a GUI, which is handy over SSH or in scripts:
 
 ```bash
-python3 main.py --info                    # detected distro, manager, family, privilege tool
-python3 main.py --list                    # catalogue + resolved package + installed state
-python3 main.py --install spotify         # install an app by its catalogue ID
-python3 main.py --install gaming-pack --dry-run   # show what a setup script would do
-python3 main.py --cli                     # interactive mode
+python3 main.py --info                            # distro, manager, family, Flatpak/Snap, privilege tool
+python3 main.py --list                            # catalogue + resolved target + installed state
+python3 main.py --install spotify                 # install an app by its catalogue ID
+python3 main.py --install gaming-pack --dry-run   # print what a setup script would do
+python3 main.py --cli                             # interactive mode
+```
+
+`--list` resolves the package name for **your** distribution, so it doubles as
+a quick check of what would be installed:
+
+```text
+ID             TYPE      TARGET                             STATUS     NAME
+------------------------------------------------------------------------------------------
+git            native    git                                installed  Git (Development)
+docker         native    moby-engine                        -          Docker Engine (Development)
+steam          flatpak   com.valvesoftware.Steam            -          Steam (Gaming)
+gaming-pack    script    gaming_fedora.sh                   -          Gaming Pack (Gaming)
 ```
 
 ## The catalogue
 
-Apps live in `catalogue.json`:
+Apps live in [`catalogue.json`](catalogue.json). Adding one is a single object:
 
 ```json
 {
@@ -70,51 +193,235 @@ Apps live in `catalogue.json`:
 }
 ```
 
-- `package_type` may be `native` (uses the detected system manager), `flatpak`, `snap` or `script`.
-- `package_name` is the name used by the underlying manager.
-- `packages` (optional) overrides the name per family: `debian`, `fedora`, `arch`, `suse`. Great for packages that are renamed between distros.
-- `scripts` (only for `script` entries) maps a family to a file in `scripts/`, and `check` lists the packages that prove the pack is already applied.
-- `icon` (optional) is a freedesktop icon name. Missing one? The app tries the bundled SVG in `assets/logos/`, then a list of known theme names, then the app's initials.
+| Field | Required | Meaning |
+| :--- | :---: | :--- |
+| `id` | yes | Stable identifier. Also the logo filename: `assets/logos/<id>.svg`. |
+| `name` | yes | Label shown on the card. |
+| `description` | yes | One line under the name. |
+| `category` | yes | One of the nine categories in the sidebar. |
+| `package_type` | yes | `native`, `flatpak`, `snap` or `script`. |
+| `package_name` | yes | Name used by the underlying manager. |
+| `packages` | no | Per-family override: `debian`, `fedora`, `arch`, `suse`. |
+| `icon` | no | Freedesktop icon name, tried after the bundled logo. |
+| `scripts` | for `script` | Maps a family to a file in `scripts/`. |
+| `check` | for `script` | Packages that prove the pack is already applied. |
+
+### 55 apps, 9 categories
+
+| Category | Apps | Highlights |
+| :--- | :---: | :--- |
+| Internet | 4 | Firefox, Brave, Vivaldi, Chromium |
+| Communication | 6 | Discord, Telegram, Signal, Slack, Zoom, Element |
+| Development | 9 | Git, Neovim, VS Code, Python, Node.js, Docker, Postman, DBeaver, Godot |
+| Gaming | 10 | Steam, Lutris, Heroic, Bottles, RetroArch, Prism, MangoHud, GameMode, Gamescope + the pack |
+| Media | 6 | VLC, Spotify, OBS Studio, Audacity, Kdenlive, mpv |
+| Graphics | 5 | GIMP, Inkscape, Krita, Blender, darktable |
+| Productivity | 7 | LibreOffice, Thunderbird, Obsidian, ONLYOFFICE, Joplin, Bitwarden, KeePassXC |
+| System | 5 | htop, btop, GParted, Timeshift, Flatseal |
+| Utilities | 3 | cURL, Wget, Unzip |
+
+<details>
+<summary><b>Internet</b> — 4 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **Firefox** | Flatpak | `org.mozilla.firefox` | Mozilla's privacy-focused web browser. |
+| **Brave** | Flatpak | `com.brave.Browser` | Chromium browser with built-in ad and tracker blocking. |
+| **Vivaldi** | Flatpak | `com.vivaldi.Vivaldi` | Highly customisable Chromium browser for power users. |
+| **Chromium** | Native | `chromium` | Open-source base of Google Chrome. |
+
+</details>
+
+<details>
+<summary><b>Communication</b> — 6 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **Discord** | Flatpak | `com.discordapp.Discord` | Voice, video and text chat for communities. |
+| **Telegram** | Flatpak | `org.telegram.desktop` | Fast cloud messenger with channels and groups. |
+| **Signal** | Flatpak | `org.signal.Signal` | End-to-end encrypted messaging and calls. |
+| **Slack** | Flatpak | `com.slack.Slack` | Team chat and collaboration workspace. |
+| **Zoom** | Flatpak | `us.zoom.Zoom` | Video meetings and webinars. |
+| **Element** | Flatpak | `im.riot.Riot` | Matrix client for decentralised, encrypted chat. |
+
+</details>
+
+<details>
+<summary><b>Development</b> — 9 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **Git** | Native | `git` | Distributed version control system. |
+| **Neovim** | Native | `neovim` | Extensible Vim-based text editor. |
+| **Visual Studio Code** | Flatpak | `com.visualstudio.code` | Code editor with debugging and Git integration. |
+| **Python 3** | Native | `python3` <br><sub>Arch: python</sub> | High-level programming language interpreter. |
+| **Node.js** | Native | `nodejs` | JavaScript runtime for servers and tooling. |
+| **Docker Engine** | Native | `docker` <br><sub>Fedora: moby-engine · Debian: docker.io</sub> | Containers for building and running applications. |
+| **Postman** | Flatpak | `com.getpostman.Postman` | Design, test and document APIs. |
+| **DBeaver** | Flatpak | `io.dbeaver.DBeaverCommunity` | Universal database client for SQL and NoSQL. |
+| **Godot Engine** | Flatpak | `org.godotengine.Godot` | Open-source 2D and 3D game engine. |
+
+</details>
+
+<details>
+<summary><b>Gaming</b> — 10 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **Steam** | Flatpak | `com.valvesoftware.Steam` | Valve's game store and launcher. |
+| **Lutris** | Native | `lutris` | Game manager for Linux, Wine, emulators and launchers. |
+| **Heroic Games Launcher** | Flatpak | `com.heroicgameslauncher.hgl` | Epic Games, GOG and Amazon Games on Linux. |
+| **Bottles** | Flatpak | `com.usebottles.bottles` | Run Windows software and games with managed Wine prefixes. |
+| **RetroArch** | Flatpak | `org.libretro.RetroArch` | Frontend for emulators, from NES to PlayStation. |
+| **Prism Launcher** | Flatpak | `org.prismlauncher.PrismLauncher` | Minecraft launcher with modpack support. |
+| **MangoHud** | Native | `mangohud` | In-game overlay for FPS, GPU and CPU stats. |
+| **GameMode** | Native | `gamemode` | Feral's daemon that tunes CPU governor while gaming. |
+| **Gamescope** | Native | `gamescope` | Micro-compositor for gaming with FSR upscaling. |
+| **Gaming Pack** | Script | `scripts/*.sh` <br><sub>Fedora · Debian · Arch</sub> | One-click setup: Steam, Lutris, Heroic, MangoHud, GameMode, Gamescope and Vulkan drivers. Picks the script for your distro. |
+
+</details>
+
+<details>
+<summary><b>Media</b> — 6 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **VLC** | Flatpak | `org.videolan.VLC` | Plays almost every audio and video format. |
+| **Spotify** | Flatpak | `com.spotify.Client` | Music streaming with playlists and podcasts. |
+| **OBS Studio** | Flatpak | `com.obsproject.Studio` | Recording and live streaming suite. |
+| **Audacity** | Flatpak | `org.audacityteam.Audacity` | Multi-track audio editor and recorder. |
+| **Kdenlive** | Flatpak | `org.kde.kdenlive` | Non-linear video editor for everyday projects. |
+| **mpv** | Native | `mpv` | Lightweight, scriptable media player. |
+
+</details>
+
+<details>
+<summary><b>Graphics</b> — 5 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **GIMP** | Native | `gimp` | Image editor for photo retouching and design. |
+| **Inkscape** | Native | `inkscape` | Vector graphics editor for SVG illustration. |
+| **Krita** | Flatpak | `org.kde.krita` | Digital painting studio for illustrators. |
+| **Blender** | Flatpak | `org.blender.Blender` | 3D modelling, animation and rendering suite. |
+| **darktable** | Flatpak | `org.darktable.Darktable` | RAW photo workflow and non-destructive editing. |
+
+</details>
+
+<details>
+<summary><b>Productivity</b> — 7 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **LibreOffice** | Native | `libreoffice` <br><sub>Arch: libreoffice-fresh</sub> | Office suite: documents, spreadsheets and slides. |
+| **Thunderbird** | Native | `thunderbird` | Email, calendar and newsgroups client. |
+| **Obsidian** | Flatpak | `md.obsidian.Obsidian` | Markdown knowledge base with linked notes. |
+| **ONLYOFFICE** | Flatpak | `org.onlyoffice.desktopeditors` | Office suite with strong Microsoft format support. |
+| **Joplin** | Flatpak | `net.cozic.joplin_desktop` | Encrypted note taking with sync and Markdown. |
+| **Bitwarden** | Flatpak | `com.bitwarden.desktop` | Open-source password manager. |
+| **KeePassXC** | Native | `keepassxc` | Offline password manager with local database. |
+
+</details>
+
+<details>
+<summary><b>System</b> — 5 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **htop** | Native | `htop` | Interactive process viewer for the terminal. |
+| **btop** | Native | `btop` | Resource monitor with graphs for CPU, memory and disk. |
+| **GParted** | Native | `gparted` | Graphical partition editor. |
+| **Timeshift** | Native | `timeshift` | System snapshots for instant rollback. |
+| **Flatseal** | Flatpak | `com.github.tchx84.Flatseal` | Manage permissions of your Flatpak apps. |
+
+</details>
+
+<details>
+<summary><b>Utilities</b> — 3 apps</summary>
+
+| App | Format | Package / target | What it does |
+| :--- | :---: | :--- | :--- |
+| **cURL** | Native | `curl` | Command-line tool for transferring data with URLs. |
+| **Wget** | Native | `wget` | Retrieves files from the web via HTTP, HTTPS and FTP. |
+| **Unzip** | Native | `unzip` | Extracts .zip archives from the command line. |
+
+</details>
 
 ## Gaming packs
 
-`scripts/` holds one setup script per family, all idempotent and readable:
+`scripts/` holds one setup script per family. They are plain bash — open them,
+read them, run them by hand if you prefer.
 
-| Script | Distro |
+| Script | Distro family |
 | :--- | :--- |
-| `gaming_fedora.sh` | Fedora, Nobara, RHEL |
-| `gaming_debian.sh` | Ubuntu, Debian, Mint, Pop!_OS |
-| `gaming_arch.sh` | Arch, CachyOS, Manjaro, EndeavourOS |
+| [`gaming_fedora.sh`](scripts/gaming_fedora.sh) | Fedora, Nobara, RHEL, Rocky, AlmaLinux |
+| [`gaming_debian.sh`](scripts/gaming_debian.sh) | Ubuntu, Debian, Mint, Pop!_OS, Zorin |
+| [`gaming_arch.sh`](scripts/gaming_arch.sh) | Arch, CachyOS, Manjaro, EndeavourOS, Garuda |
 
-They install Lutris, MangoHud, GameMode, Gamescope, Wine/Winetricks, Vulkan tools
-and drivers, then add Flathub and install Steam, Heroic, Bottles and Prism Launcher
-from it. Steam comes from the official Flatpak on purpose: no RPM Fusion, no i386
-multiarch and no `[multilib]` editing just to get a gaming machine.
+**What they install**
 
-**Preview first.** Every script accepts `--dry-run` and the app exposes it as the
-**Preview** button — it prints each command and changes nothing:
+| Source | Packages |
+| :--- | :--- |
+| Native repositories | Lutris, MangoHud, GameMode, Gamescope, Wine + Winetricks, Vulkan tools and drivers |
+| Flathub | Steam, Heroic Games Launcher, Bottles, Prism Launcher |
+
+The scripts are **idempotent**: running them twice is fine, and `pacman -S
+--needed` / `apt-get install` skip what is already there.
+
+**Preview first.** The app's **Preview** button runs the script with `--dry-run`,
+without root and without touching the system:
 
 ```bash
 bash scripts/gaming_arch.sh --dry-run
 python3 main.py --install gaming-pack --dry-run
 ```
 
-Without `--dry-run` the scripts ask for root once, through polkit.
+**Design choices**
 
-## Project structure
+- **Steam comes from the official Flatpak.** No RPM Fusion, no i386 multiarch
+  setup, no `[multilib]` editing. It ships its own runtime and updates itself.
+- **Arch and `[multilib]`:** if the repo is disabled, the script skips Wine and
+  says why instead of editing `/etc/pacman.conf` behind your back. Bottles
+  (Flatpak) still gives you a Wine prefix.
+- **Optional packages are allowed to fail.** Older Ubuntu releases have no
+  `gamescope`; that is reported as *skipped*, not as a failed setup. The script
+  only exits non-zero if Lutris or MangoHud are missing.
+- **One password prompt.** The script runs once through `pkexec`, so polkit
+  asks for your password once and the package manager runs as root.
 
+> The full pack downloads several GB (Steam runtime, Wine, drivers). Use
+> **Preview** first if you only want to see the plan.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["catalogue.json"] --> B{"package_type"}
+    B -->|native| C["resolve_package()<br/>family: debian / fedora / arch / suse"]
+    B -->|flatpak| D["flatpak install flathub …"]
+    B -->|snap| E["snap install …"]
+    B -->|script| F["scripts/gaming_*.sh<br/>picked by family"]
+    C --> G["apt-get · dnf · pacman · zypper"]
+    F --> H["pkexec bash script<br/>(or bash --dry-run)"]
+    G --> I["polkit / sudo"]
+    D --> J["run + stream stdout"]
+    E --> J
+    H --> J
+    I --> J
+    J --> K["console + Installed badge"]
 ```
-main.py                  # entry point (GUI + CLI)
-catalogue.json           # app catalogue (55 apps)
-core/system_info.py      # distro + package manager detection, package resolution, command building
-core/installer.py        # command execution, streaming and installed checks
-core/catalogue_loader.py # catalogue loading/normalisation
-ui/main_window.py        # PySide6 interface and background workers
-ui/theme.py              # light/dark palettes, global QSS, saved preference
-ui/icons.py              # bundled SVG logos → icon theme → generated fallback
-assets/logos/            # brand logos (Simple Icons, CC0) — see assets/logos/README.md
-scripts/                 # gaming setup scripts per distro family
-```
+
+1. **Detect.** `SystemInfo` reads the distro (`distro` module, with fallbacks),
+   picks the manager and derives the family.
+2. **Resolve.** `package_name` is overridden by `packages[family]` when present,
+   and `script` entries map their family to a file in `scripts/`.
+3. **Escalate.** `sudo -n true` first: if passwordless sudo works, use it.
+   Otherwise, in a graphical session, use `pkexec` so polkit owns the password
+   prompt. There is no third option that silently fails.
+4. **Run.** Commands are built as **argv lists** and executed with
+   `subprocess.Popen`, merged stdout/stderr, streamed line by line to the UI.
+5. **Verify.** Each app has a read-only check (`rpm -q`, `dpkg -s`, `pacman -Q`,
+   `flatpak info`, `snap list`) that drives the *Installed* badge.
 
 ## Supported distributions
 
@@ -125,35 +432,148 @@ scripts/                 # gaming setup scripts per distro family
 | Arch | `pacman` | Arch, CachyOS, Manjaro, EndeavourOS, Garuda |
 | openSUSE | `zypper` | openSUSE Leap / Tumbleweed |
 
-## Privilege escalation
+Native and Flatpak installs work on all four. Gaming scripts currently target
+Fedora, Debian/Ubuntu and Arch families; openSUSE and immutable systems
+(Fedora Silverblue/Kinoite, openSUSE MicroOS) need `rpm-ostree`/`transactional-update`
+handling and are on the roadmap.
 
-Installing system packages needs root. LinuxUtil Studio picks the safest option that
-actually works for a GUI app:
+## Permissions & security
 
-| Situation | Command used |
+- **No credentials.** The app never reads, stores, logs or transmits passwords.
+  Authentication is handed to polkit, the desktop's own mechanism.
+- **No shell for normal installs.** Native, Flatpak and Snap commands are argv
+  lists passed straight to `exec`, so package names are never interpreted by a
+  shell.
+- **Shell scripts are opt-in and visible.** The gaming packs are ordinary files
+  in `scripts/`; the UI shows a confirmation dialog with the script name and
+  offers **Preview** before anything runs.
+- **Preview cannot change the system.** `--dry-run` runs without root and only
+  prints the planned commands.
+- **Read-only detection.** Installed checks only query package metadata.
+- **Network** is used by the package manager, Flathub and Flatpak — not by the
+  app itself.
+
+## Project structure
+
+```text
+main.py                     # entry point: GUI + CLI flags
+catalogue.json              # 55 apps, 9 categories
+requirements.txt            # PySide6
+
+core/
+  system_info.py            # distro/manager/family detection, package + script resolution, argv building
+  installer.py              # execution, streaming, installed checks, error messages
+  catalogue_loader.py       # JSON loading and normalisation
+
+ui/
+  main_window.py            # window, cards, workers, console
+  theme.py                  # light/dark palettes, QSS, saved preference
+  icons.py                  # SVG logo -> icon theme -> generated initials tile
+
+assets/
+  banner.svg                # README banner
+  logos/                    # 39 brand logos (Simple Icons, CC0) + attribution
+  screenshots/              # README screenshots
+
+scripts/
+  gaming_fedora.sh          # Fedora / Nobara / RHEL
+  gaming_debian.sh          # Ubuntu / Debian / Mint / Pop!_OS
+  gaming_arch.sh            # Arch / CachyOS / Manjaro / EndeavourOS
+
+tests/
+  test_catalogue.py         # catalogue, logos, resolution and script dry-run tests
+```
+
+## Development
+
+Contributions are welcome — read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
+ground rules, then jump to [adding an app](#add-an-app) or
+[adding a gaming pack](CONTRIBUTING.md#adding-a-gaming-pack).
+
+**Run the tests** (no PySide6 needed):
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+They check unique IDs, required fields, known categories and formats, valid
+per-family overrides, that every declared script exists, that bundled logos are
+real SVGs, that native packages resolve, that commands are argv lists, and that
+the gaming script for the current family completes `--dry-run` with exit 0.
+
+The same suite runs in GitHub Actions (`.github/workflows/tests.yml`) on Python
+3.10 and 3.12, together with the Python and bash syntax checks.
+
+**Compile check / syntax:**
+
+```bash
+python3 -m py_compile main.py core/*.py ui/*.py
+for f in scripts/*.sh; do bash -n "$f"; done
+```
+
+### Add an app
+
+1. Append an object to `catalogue.json` (see [the catalogue](#the-catalogue)).
+2. Drop `assets/logos/<id>.svg` if you have a logo — otherwise the app falls
+   back to the icon theme and then to coloured initials.
+3. If the package has a different name on another family, add `packages`.
+4. Verify: `python3 main.py --list` and `python3 main.py --install <id> --dry-run`
+   for script entries.
+
+### Add a distro family
+
+1. Map the distro ID to a manager in `core/system_info.py` (`_get_package_manager`).
+2. Add the manager → family pair to `FAMILY_BY_MANAGER`.
+3. Add the install/check commands for the new manager in `get_install_commands`
+   and `get_check_command`.
+4. If you want a gaming pack, add `scripts/gaming_<family>.sh` and map it in
+   `catalogue.json`.
+
+## FAQ & troubleshooting
+
+| Symptom | Cause & fix |
 | :--- | :--- |
-| `sudo` configured without a password (`NOPASSWD`) | `sudo` |
-| Normal desktop session with a polkit agent | `pkexec` — the system's own graphical password dialog |
-| No graphical session, or no `pkexec` | `sudo` (run the app from a terminal) |
+| *"sudo: a terminal is required to read the password"* | The app was started without a terminal and no polkit agent is running. Install/enable a polkit authentication agent (GNOME and KDE ship one) so `pkexec` can show the dialog — or run the app from a terminal. |
+| *"X needs Flatpak, which is not installed"* | Install Flatpak first (`sudo dnf install flatpak` / `sudo apt install flatpak`) and add Flathub; the app deliberately does not install a package manager for you. |
+| *Preview prints commands but nothing happens* | That is the point of `--dry-run`. Use **Run setup** / **Install** for the real run; it will ask for your password. |
+| *Gamescope missing after the Ubuntu pack* | Not packaged in older Ubuntu releases. The pack reports it as skipped and continues. |
+| *Steam download is huge* | The Flatpak pulls the Steam runtime and 32-bit graphics drivers. It is a one-time cost and keeps the host clean. |
+| *A card says "Reinstall"* | The package was detected on the system. Reinstall is harmless and idempotent. |
+| *No gaming pack for openSUSE* | Not written yet. Clicking **Run setup** reports that no script is available for your family and nothing is installed. |
+| *Nothing appears / no window on Wayland* | Run from a terminal and check the output; the app needs `WAYLAND_DISPLAY` or `DISPLAY` and a Qt platform plugin. |
 
-A GUI process launched from the application menu has **no controlling terminal**, so a
-plain `sudo` cannot prompt for a password and fails with *"a terminal is required to
-read the password"*. Using `pkexec` hands authentication to polkit, so the desktop
-shows its standard prompt and the app never touches your password.
+## Roadmap
 
-LinuxUtil Studio never reads, stores, or logs credentials. Native, Flatpak and Snap
-installs are executed as argv lists (no shell), so package names are never
-interpreted by a shell. Gaming packs are shell scripts on purpose — they are plain
-files in `scripts/`, you can read them, and **Preview** shows every command before
-anything runs.
+- [x] 55-app catalogue with per-distro package names
+- [x] Bundled brand logos with theme-aware tiles
+- [x] Gaming packs for Fedora, Ubuntu/Debian and Arch/CachyOS
+- [x] `--dry-run` preview for every script
+- [ ] Gaming pack for openSUSE
+- [ ] Immutable systems (`rpm-ostree`, `transactional-update`)
+- [ ] AUR helper detection on Arch
+- [ ] "Updates available" view
+- [ ] Desktop entry and app icon, so it launches from the menu
 
-Run `python3 main.py --info` to see which method was detected on your machine.
+## Verified on
+
+| | |
+| :--- | :--- |
+| Host | Fedora 44, GNOME on Wayland |
+| Manager | `dnf`, Flatpak installed, Snap absent |
+| Privilege | `pkexec` (polkit) |
+| Checks | 11/11 unit tests, 3/3 gaming scripts (`bash -n` + `--dry-run`), 55/55 resolved install commands |
+| Live test | `pkexec dnf install -y htop` → polkit prompt → `Complete!` → *Installed* badge |
 
 ## Credits
 
-Brand logos come from [Simple Icons](https://simpleicons.org) (CC0 1.0) and remain
-the trademarks of their owners; see `assets/logos/README.md`.
+- Brand logos from [Simple Icons](https://simpleicons.org) (**CC0 1.0**), vendored
+  in `assets/logos/`. They remain the trademarks of their respective owners and
+  are used only to identify the app being installed. See
+  [`assets/logos/README.md`](assets/logos/README.md).
+- Built with [PySide6](https://doc.qt.io/qtforpython/) / Qt 6.
+- Inspired by **MacUtil** — same idea, different kernel.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Do whatever you want, just keep the copyright
+notice.
