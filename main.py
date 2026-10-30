@@ -21,6 +21,7 @@ def print_system_info():
     print(f"Package manager: {info.package_manager}")
     print(f"Flatpak        : {'yes' if info.has_flatpak else 'no'}")
     print(f"Snap           : {'yes' if info.has_snap else 'no'}")
+    print(f"Privilege tool : {info.privilege_tool}")
     print(f"GUI available  : {'yes' if GUI_AVAILABLE else 'no (install PySide6)'}")
 
 

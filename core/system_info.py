@@ -1,3 +1,4 @@
+import os
 import platform
 import subprocess
 import shutil
@@ -10,6 +11,43 @@ class SystemInfo:
         self.package_manager = self._get_package_manager()
         self.has_flatpak = shutil.which("flatpak") is not None
         self.has_snap = shutil.which("snap") is not None
+        self._privilege_tool = None
+
+    # ------------------------------------------------------------------
+    # Escalada de privilégios
+    # ------------------------------------------------------------------
+    @property
+    def privilege_tool(self):
+        """Comando a usar para correr algo como root.
+
+        ``sudo`` só serve se estiver configurado sem password ou se houver um
+        terminal onde pedir a password. Uma app GUI lançada pelo menu não tem
+        terminal, por isso nesse caso usa-se ``pkexec`` (diálogo do polkit).
+        """
+        if self._privilege_tool is not None:
+            return self._privilege_tool
+
+        self._privilege_tool = "sudo"
+        if shutil.which("sudo") is None:
+            self._privilege_tool = "pkexec" if shutil.which("pkexec") else "sudo"
+            return self._privilege_tool
+
+        # sudo sem password (sudoers/NOPASSWD)? então é o caminho mais simples.
+        try:
+            if subprocess.run(
+                ["sudo", "-n", "true"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            ).returncode == 0:
+                return self._privilege_tool
+        except Exception:
+            pass
+
+        graphical = bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
+        if graphical and shutil.which("pkexec"):
+            self._privilege_tool = "pkexec"
+        return self._privilege_tool
 
     def _get_distro(self):
         try:
@@ -43,22 +81,26 @@ class SystemInfo:
     def get_install_commands(self, package_name, package_type=None):
         """Retorna uma lista de comandos (argv) a executar em sequência."""
         if package_type == "flatpak":
+            # O flatpak pede autorização sozinho (polkit) para instalações de sistema.
             return [["flatpak", "install", "-y", "flathub", package_name]] if self.has_flatpak else []
         if package_type == "snap":
-            return [["sudo", "snap", "install", package_name]] if self.has_snap else []
+            if not self.has_snap:
+                return []
+            return [[self.privilege_tool, "snap", "install", package_name]]
 
         pm = self.package_manager
+        priv = self.privilege_tool
         if pm == "apt":
             return [
-                ["sudo", "apt-get", "update"],
-                ["sudo", "apt-get", "install", "-y", package_name],
+                [priv, "apt-get", "update"],
+                [priv, "apt-get", "install", "-y", package_name],
             ]
         if pm == "dnf":
-            return [["sudo", "dnf", "install", "-y", package_name]]
+            return [[priv, "dnf", "install", "-y", package_name]]
         if pm == "pacman":
-            return [["sudo", "pacman", "-S", "--noconfirm", package_name]]
+            return [[priv, "pacman", "-S", "--noconfirm", package_name]]
         if pm == "zypper":
-            return [["sudo", "zypper", "install", "-y", package_name]]
+            return [[priv, "zypper", "install", "-y", package_name]]
         return []
 
     def get_install_command(self, package_name, package_type=None):

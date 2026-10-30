@@ -92,9 +92,26 @@ ui/icons.py              # icon theme lookup + generated fallback
 | Arch / Manjaro / EndeavourOS | `pacman` |
 | openSUSE | `zypper` |
 
-## Security note
+## Privilege escalation
 
-Installing system packages requires `sudo`. LinuxUtil Studio asks for the sudo password in the terminal that launched it — it never stores or handles credentials itself.
+Installing system packages needs root. LinuxUtil Studio picks the safest option that
+actually works for a GUI app:
+
+| Situation | Command used |
+| :--- | :--- |
+| `sudo` configured without a password (`NOPASSWD`) | `sudo` |
+| Normal desktop session with a polkit agent | `pkexec` — the system's own graphical password dialog |
+| No graphical session, or no `pkexec` | `sudo` (run the app from a terminal) |
+
+A GUI process launched from the application menu has **no controlling terminal**, so a
+plain `sudo` cannot prompt for a password and fails with *"a terminal is required to
+read the password"*. Using `pkexec` hands authentication to polkit, so the desktop
+shows its standard prompt and the app never touches your password.
+
+LinuxUtil Studio never reads, stores, or logs credentials. Commands are executed as
+argv lists (no shell), so package names are never interpreted by a shell.
+
+Run `python3 main.py --info` to see which method was detected on your machine.
 
 ## License
 

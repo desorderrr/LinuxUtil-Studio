@@ -28,6 +28,20 @@ class Installer:
     # ------------------------------------------------------------------
     # Instalação
     # ------------------------------------------------------------------
+    @staticmethod
+    def _explain_failure(cmd, returncode):
+        """Traduz códigos de saída conhecidos numa mensagem legível."""
+        if cmd[0] == "pkexec" and returncode == 126:
+            return "Autorização cancelada (o pedido de password foi fechado)."
+        if cmd[0] == "pkexec" and returncode == 127:
+            return "Autorização recusada pelo sistema (polkit)."
+        if cmd[0] == "sudo" and returncode == 1:
+            return (
+                "O sudo não conseguiu pedir a password (sem terminal). "
+                "Corre a app a partir de um terminal ou configura o sudo sem password."
+            )
+        return f"Command failed (exit {returncode}): {' '.join(cmd)}"
+
     def run_install(self, package_name, package_type=None, on_output=None):
         """
         Executa a instalação.
@@ -70,7 +84,7 @@ class Installer:
                 if process.returncode != 0:
                     return {
                         "status": "error",
-                        "message": f"Command failed (exit {process.returncode}): {' '.join(cmd)}",
+                        "message": self._explain_failure(cmd, process.returncode),
                         "output": full_output,
                     }
             except FileNotFoundError:
