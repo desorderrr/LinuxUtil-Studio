@@ -1,0 +1,11 @@
+.opencode/
+.var/
+.local/
+.cache/
+.config/
+__pycache__/
+*.py[cd]
+.vscode/
+.DS_Store
+.env
+*.log

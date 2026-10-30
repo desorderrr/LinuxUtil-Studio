@@ -1,0 +1,28 @@
+# List of essential tools for Linux
+[[apps]]
+id = "git"
+name = "Git"
+description = "Distributed version control system."
+category = "Development"
+package_name = "git"
+
+[[apps]]
+id = "neovim"
+name = "Neovim"
+description = "Extensible Vim-based editor."
+category = "Development"
+package_name = "neovim"
+
+[[apps]]
+id = "curl"
+name = "Curl"
+description = "Command line tool for transferring data."
+category = "Utilities"
+package_name = "curl"
+
+[[apps]]
+id = "htop"
+name = "Htop"
+description = "Interactive process viewer."
+category = "System"
+package_name = "htop"

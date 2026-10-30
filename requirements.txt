@@ -1,0 +1,2 @@
+# Requirements for LinuxUtil Studio
+PySide6>=6.0.0
