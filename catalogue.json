@@ -1,98 +1,452 @@
 [
     {
+        "id": "firefox",
+        "name": "Firefox",
+        "description": "Mozilla's privacy-focused web browser.",
+        "category": "Internet",
+        "package_type": "flatpak",
+        "package_name": "org.mozilla.firefox"
+    },
+    {
+        "id": "brave",
+        "name": "Brave",
+        "description": "Chromium browser with built-in ad and tracker blocking.",
+        "category": "Internet",
+        "package_type": "flatpak",
+        "package_name": "com.brave.Browser"
+    },
+    {
+        "id": "vivaldi",
+        "name": "Vivaldi",
+        "description": "Highly customisable Chromium browser for power users.",
+        "category": "Internet",
+        "package_type": "flatpak",
+        "package_name": "com.vivaldi.Vivaldi"
+    },
+    {
+        "id": "chromium",
+        "name": "Chromium",
+        "description": "Open-source base of Google Chrome.",
+        "category": "Internet",
+        "package_type": "native",
+        "package_name": "chromium"
+    },
+    {
+        "id": "discord",
+        "name": "Discord",
+        "description": "Voice, video and text chat for communities.",
+        "category": "Communication",
+        "package_type": "flatpak",
+        "package_name": "com.discordapp.Discord",
+        "icon": "discord"
+    },
+    {
+        "id": "telegram",
+        "name": "Telegram",
+        "description": "Fast cloud messenger with channels and groups.",
+        "category": "Communication",
+        "package_type": "flatpak",
+        "package_name": "org.telegram.desktop"
+    },
+    {
+        "id": "signal",
+        "name": "Signal",
+        "description": "End-to-end encrypted messaging and calls.",
+        "category": "Communication",
+        "package_type": "flatpak",
+        "package_name": "org.signal.Signal"
+    },
+    {
+        "id": "slack",
+        "name": "Slack",
+        "description": "Team chat and collaboration workspace.",
+        "category": "Communication",
+        "package_type": "flatpak",
+        "package_name": "com.slack.Slack"
+    },
+    {
+        "id": "zoom",
+        "name": "Zoom",
+        "description": "Video meetings and webinars.",
+        "category": "Communication",
+        "package_type": "flatpak",
+        "package_name": "us.zoom.Zoom"
+    },
+    {
+        "id": "element",
+        "name": "Element",
+        "description": "Matrix client for decentralised, encrypted chat.",
+        "category": "Communication",
+        "package_type": "flatpak",
+        "package_name": "im.riot.Riot"
+    },
+    {
         "id": "git",
         "name": "Git",
         "description": "Distributed version control system.",
         "category": "Development",
-        "package_name": "git",
-        "package_type": "native"
+        "package_type": "native",
+        "package_name": "git"
     },
     {
         "id": "neovim",
         "name": "Neovim",
         "description": "Extensible Vim-based text editor.",
         "category": "Development",
-        "package_name": "neovim",
-        "package_type": "native"
+        "package_type": "native",
+        "package_name": "neovim"
     },
     {
         "id": "vscode",
         "name": "Visual Studio Code",
         "description": "Code editor with debugging and Git integration.",
         "category": "Development",
-        "package_name": "code",
-        "package_type": "native"
+        "package_type": "flatpak",
+        "package_name": "com.visualstudio.code"
     },
     {
         "id": "python3",
         "name": "Python 3",
         "description": "High-level programming language interpreter.",
         "category": "Development",
+        "package_type": "native",
         "package_name": "python3",
-        "package_type": "native"
+        "packages": {"arch": "python"}
     },
     {
-        "id": "htop",
-        "name": "htop",
-        "description": "Interactive process viewer for the terminal.",
-        "category": "System",
-        "package_name": "htop",
-        "package_type": "native"
+        "id": "nodejs",
+        "name": "Node.js",
+        "description": "JavaScript runtime for servers and tooling.",
+        "category": "Development",
+        "package_type": "native",
+        "package_name": "nodejs"
     },
     {
-        "id": "curl",
-        "name": "cURL",
-        "description": "Command-line tool for transferring data with URLs.",
-        "category": "Utilities",
-        "package_name": "curl",
-        "package_type": "native"
+        "id": "docker",
+        "name": "Docker Engine",
+        "description": "Containers for building and running applications.",
+        "category": "Development",
+        "package_type": "native",
+        "package_name": "docker",
+        "packages": {"fedora": "moby-engine", "debian": "docker.io"}
     },
     {
-        "id": "wget",
-        "name": "Wget",
-        "description": "Retrieves files from the web via HTTP, HTTPS and FTP.",
-        "category": "Utilities",
-        "package_name": "wget",
-        "package_type": "native"
+        "id": "postman",
+        "name": "Postman",
+        "description": "Design, test and document APIs.",
+        "category": "Development",
+        "package_type": "flatpak",
+        "package_name": "com.getpostman.Postman"
     },
     {
-        "id": "unzip",
-        "name": "Unzip",
-        "description": "Extracts .zip archives from the command line.",
-        "category": "Utilities",
-        "package_name": "unzip",
-        "package_type": "native"
+        "id": "dbeaver",
+        "name": "DBeaver",
+        "description": "Universal database client for SQL and NoSQL.",
+        "category": "Development",
+        "package_type": "flatpak",
+        "package_name": "io.dbeaver.DBeaverCommunity"
+    },
+    {
+        "id": "godot",
+        "name": "Godot Engine",
+        "description": "Open-source 2D and 3D game engine.",
+        "category": "Development",
+        "package_type": "flatpak",
+        "package_name": "org.godotengine.Godot"
+    },
+    {
+        "id": "steam",
+        "name": "Steam",
+        "description": "Valve's game store and launcher.",
+        "category": "Gaming",
+        "package_type": "flatpak",
+        "package_name": "com.valvesoftware.Steam"
+    },
+    {
+        "id": "lutris",
+        "name": "Lutris",
+        "description": "Game manager for Linux, Wine, emulators and launchers.",
+        "category": "Gaming",
+        "package_type": "native",
+        "package_name": "lutris"
+    },
+    {
+        "id": "heroic",
+        "name": "Heroic Games Launcher",
+        "description": "Epic Games, GOG and Amazon Games on Linux.",
+        "category": "Gaming",
+        "package_type": "flatpak",
+        "package_name": "com.heroicgameslauncher.hgl"
+    },
+    {
+        "id": "bottles",
+        "name": "Bottles",
+        "description": "Run Windows software and games with managed Wine prefixes.",
+        "category": "Gaming",
+        "package_type": "flatpak",
+        "package_name": "com.usebottles.bottles"
+    },
+    {
+        "id": "retroarch",
+        "name": "RetroArch",
+        "description": "Frontend for emulators, from NES to PlayStation.",
+        "category": "Gaming",
+        "package_type": "flatpak",
+        "package_name": "org.libretro.RetroArch"
+    },
+    {
+        "id": "prism",
+        "name": "Prism Launcher",
+        "description": "Minecraft launcher with modpack support.",
+        "category": "Gaming",
+        "package_type": "flatpak",
+        "package_name": "org.prismlauncher.PrismLauncher"
+    },
+    {
+        "id": "mangohud",
+        "name": "MangoHud",
+        "description": "In-game overlay for FPS, GPU and CPU stats.",
+        "category": "Gaming",
+        "package_type": "native",
+        "package_name": "mangohud"
+    },
+    {
+        "id": "gamemode",
+        "name": "GameMode",
+        "description": "Feral's daemon that tunes CPU governor while gaming.",
+        "category": "Gaming",
+        "package_type": "native",
+        "package_name": "gamemode"
+    },
+    {
+        "id": "gamescope",
+        "name": "Gamescope",
+        "description": "Micro-compositor for gaming with FSR upscaling.",
+        "category": "Gaming",
+        "package_type": "native",
+        "package_name": "gamescope"
+    },
+    {
+        "id": "gaming-pack",
+        "name": "Gaming Pack",
+        "description": "One-click setup: Steam, Lutris, Heroic, MangoHud, GameMode, Gamescope and Vulkan drivers. Picks the script for your distro.",
+        "category": "Gaming",
+        "package_type": "script",
+        "package_name": "gaming-pack",
+        "scripts": {
+            "fedora": "gaming_fedora.sh",
+            "debian": "gaming_debian.sh",
+            "arch": "gaming_arch.sh"
+        },
+        "check": ["lutris", "mangohud", "gamescope"]
     },
     {
         "id": "vlc",
         "name": "VLC",
         "description": "Plays almost every audio and video format.",
         "category": "Media",
-        "package_name": "vlc",
-        "package_type": "native"
+        "package_type": "flatpak",
+        "package_name": "org.videolan.VLC"
+    },
+    {
+        "id": "spotify",
+        "name": "Spotify",
+        "description": "Music streaming with playlists and podcasts.",
+        "category": "Media",
+        "package_type": "flatpak",
+        "package_name": "com.spotify.Client"
+    },
+    {
+        "id": "obs",
+        "name": "OBS Studio",
+        "description": "Recording and live streaming suite.",
+        "category": "Media",
+        "package_type": "flatpak",
+        "package_name": "com.obsproject.Studio"
+    },
+    {
+        "id": "audacity",
+        "name": "Audacity",
+        "description": "Multi-track audio editor and recorder.",
+        "category": "Media",
+        "package_type": "flatpak",
+        "package_name": "org.audacityteam.Audacity"
+    },
+    {
+        "id": "kdenlive",
+        "name": "Kdenlive",
+        "description": "Non-linear video editor for everyday projects.",
+        "category": "Media",
+        "package_type": "flatpak",
+        "package_name": "org.kde.kdenlive"
+    },
+    {
+        "id": "mpv",
+        "name": "mpv",
+        "description": "Lightweight, scriptable media player.",
+        "category": "Media",
+        "package_type": "native",
+        "package_name": "mpv"
     },
     {
         "id": "gimp",
         "name": "GIMP",
         "description": "Image editor for photo retouching and design.",
         "category": "Graphics",
-        "package_name": "gimp",
-        "package_type": "native"
+        "package_type": "native",
+        "package_name": "gimp"
     },
     {
-        "id": "spotify",
-        "name": "Spotify",
-        "description": "Music streaming client (Flatpak / Flathub).",
-        "category": "Media",
-        "package_name": "com.spotify.Client",
-        "package_type": "flatpak"
+        "id": "inkscape",
+        "name": "Inkscape",
+        "description": "Vector graphics editor for SVG illustration.",
+        "category": "Graphics",
+        "package_type": "native",
+        "package_name": "inkscape"
     },
     {
-        "id": "discord",
-        "name": "Discord",
-        "description": "Voice, video and text chat (Snap).",
-        "category": "Social",
-        "package_name": "discord",
-        "package_type": "snap"
+        "id": "krita",
+        "name": "Krita",
+        "description": "Digital painting studio for illustrators.",
+        "category": "Graphics",
+        "package_type": "flatpak",
+        "package_name": "org.kde.krita"
+    },
+    {
+        "id": "blender",
+        "name": "Blender",
+        "description": "3D modelling, animation and rendering suite.",
+        "category": "Graphics",
+        "package_type": "flatpak",
+        "package_name": "org.blender.Blender"
+    },
+    {
+        "id": "darktable",
+        "name": "darktable",
+        "description": "RAW photo workflow and non-destructive editing.",
+        "category": "Graphics",
+        "package_type": "flatpak",
+        "package_name": "org.darktable.Darktable"
+    },
+    {
+        "id": "libreoffice",
+        "name": "LibreOffice",
+        "description": "Office suite: documents, spreadsheets and slides.",
+        "category": "Productivity",
+        "package_type": "native",
+        "package_name": "libreoffice",
+        "packages": {"arch": "libreoffice-fresh"}
+    },
+    {
+        "id": "thunderbird",
+        "name": "Thunderbird",
+        "description": "Email, calendar and newsgroups client.",
+        "category": "Productivity",
+        "package_type": "native",
+        "package_name": "thunderbird"
+    },
+    {
+        "id": "obsidian",
+        "name": "Obsidian",
+        "description": "Markdown knowledge base with linked notes.",
+        "category": "Productivity",
+        "package_type": "flatpak",
+        "package_name": "md.obsidian.Obsidian"
+    },
+    {
+        "id": "onlyoffice",
+        "name": "ONLYOFFICE",
+        "description": "Office suite with strong Microsoft format support.",
+        "category": "Productivity",
+        "package_type": "flatpak",
+        "package_name": "org.onlyoffice.desktopeditors"
+    },
+    {
+        "id": "joplin",
+        "name": "Joplin",
+        "description": "Encrypted note taking with sync and Markdown.",
+        "category": "Productivity",
+        "package_type": "flatpak",
+        "package_name": "net.cozic.joplin_desktop"
+    },
+    {
+        "id": "bitwarden",
+        "name": "Bitwarden",
+        "description": "Open-source password manager.",
+        "category": "Productivity",
+        "package_type": "flatpak",
+        "package_name": "com.bitwarden.desktop"
+    },
+    {
+        "id": "keepassxc",
+        "name": "KeePassXC",
+        "description": "Offline password manager with local database.",
+        "category": "Productivity",
+        "package_type": "native",
+        "package_name": "keepassxc"
+    },
+    {
+        "id": "htop",
+        "name": "htop",
+        "description": "Interactive process viewer for the terminal.",
+        "category": "System",
+        "package_type": "native",
+        "package_name": "htop"
+    },
+    {
+        "id": "btop",
+        "name": "btop",
+        "description": "Resource monitor with graphs for CPU, memory and disk.",
+        "category": "System",
+        "package_type": "native",
+        "package_name": "btop"
+    },
+    {
+        "id": "gparted",
+        "name": "GParted",
+        "description": "Graphical partition editor.",
+        "category": "System",
+        "package_type": "native",
+        "package_name": "gparted"
+    },
+    {
+        "id": "timeshift",
+        "name": "Timeshift",
+        "description": "System snapshots for instant rollback.",
+        "category": "System",
+        "package_type": "native",
+        "package_name": "timeshift"
+    },
+    {
+        "id": "flatseal",
+        "name": "Flatseal",
+        "description": "Manage permissions of your Flatpak apps.",
+        "category": "System",
+        "package_type": "flatpak",
+        "package_name": "com.github.tchx84.Flatseal"
+    },
+    {
+        "id": "curl",
+        "name": "cURL",
+        "description": "Command-line tool for transferring data with URLs.",
+        "category": "Utilities",
+        "package_type": "native",
+        "package_name": "curl"
+    },
+    {
+        "id": "wget",
+        "name": "Wget",
+        "description": "Retrieves files from the web via HTTP, HTTPS and FTP.",
+        "category": "Utilities",
+        "package_type": "native",
+        "package_name": "wget"
+    },
+    {
+        "id": "unzip",
+        "name": "Unzip",
+        "description": "Extracts .zip archives from the command line.",
+        "category": "Utilities",
+        "package_type": "native",
+        "package_name": "unzip"
     }
 ]

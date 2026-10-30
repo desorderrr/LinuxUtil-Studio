@@ -1,12 +1,13 @@
 import sys
 import html
+import os
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QListWidget, QListWidgetItem, QLabel, QPushButton, QTextEdit, QLineEdit,
-    QFrame, QScrollArea,
+    QFrame, QScrollArea, QMessageBox,
 )
 
 from core.catalogue_loader import load_catalogue
@@ -22,17 +23,17 @@ class InstallWorker(QThread):
     line = Signal(str)
     done = Signal(dict)
 
-    def __init__(self, package_name, package_type):
+    def __init__(self, app_data, dry_run=False):
         super().__init__()
-        self.package_name = package_name
-        self.package_type = package_type
+        self.app_data = app_data
+        self.dry_run = dry_run
 
     def run(self):
         installer = Installer()
         result = installer.run_install(
-            self.package_name,
-            self.package_type,
+            self.app_data,
             on_output=self.line.emit,
+            dry_run=self.dry_run,
         )
         self.done.emit(result)
 
@@ -49,9 +50,7 @@ class StatusWorker(QThread):
         installer = Installer()
         for app in self.apps:
             try:
-                installed = installer.is_installed(
-                    app["package_name"], app.get("package_type")
-                )
+                installed = installer.is_installed(app)
             except Exception:
                 installed = False
             self.found.emit(app["id"], installed)
@@ -101,7 +100,8 @@ class AppCard(QFrame):
         name_row.addWidget(self.name_label)
 
         ptype = app_data.get("package_type", "native")
-        self.badge = QLabel(ptype.upper())
+        self.is_script = ptype == "script"
+        self.badge = QLabel("SCRIPT" if self.is_script else ptype.upper())
         self.badge.setStyleSheet(
             "background-color: {}; color: white; border-radius: 4px;"
             " padding: 1px 6px; font-size: 9px; font-weight: 700;".format(
@@ -125,14 +125,26 @@ class AppCard(QFrame):
         text_layout.addLayout(name_row)
         text_layout.addWidget(self.desc_label)
 
-        self.install_btn = QPushButton("Install")
-        self.install_btn.setFixedSize(92, 32)
+        self.install_btn = QPushButton("Run setup" if self.is_script else "Install")
+        self.install_btn.setFixedSize(104, 32)
         self.install_btn.setCursor(Qt.PointingHandCursor)
         self._style_button(palette)
 
         self.install_btn.clicked.connect(lambda: install_callback(self.app_data))
 
+        self.preview_btn = None
+        if self.is_script:
+            self.preview_btn = QPushButton("Preview")
+            self.preview_btn.setFixedSize(78, 32)
+            self.preview_btn.setCursor(Qt.PointingHandCursor)
+            self.preview_btn.setToolTip("Show every command without changing the system")
+            self._style_secondary(self.preview_btn)
+            self.preview_btn.clicked.connect(
+                lambda: install_callback(self.app_data, True))
+
         layout.addLayout(text_layout, stretch=1)
+        if self.preview_btn is not None:
+            layout.addWidget(self.preview_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self.install_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
 
     def _style_button(self, p):
@@ -143,22 +155,42 @@ class AppCard(QFrame):
             "QPushButton:disabled {{ background-color: {border}; color: {text_muted}; }}".format(**p)
         )
 
+    def _style_secondary(self, button):
+        p = self.palette
+        button.setStyleSheet(
+            "QPushButton {{ background-color: transparent; color: {text_muted};"
+            " border: 1px solid {border}; border-radius: 6px;"
+            " font-weight: 600; font-size: 12px; }}"
+            "QPushButton:hover {{ color: {accent}; border: 1px solid {accent}; }}"
+            "QPushButton:disabled {{ color: {border}; }}".format(**p)
+        )
+
     # -- estado ---------------------------------------------------------
     def mark_installed(self, installed):
         if installed:
             self.status_label.setText("● Installed")
-            self.install_btn.setText("Reinstall")
+            self.install_btn.setText("Rerun" if self.is_script else "Reinstall")
         else:
             self.status_label.setText("")
-            self.install_btn.setText("Install")
+            self.install_btn.setText("Run setup" if self.is_script else "Install")
 
-    def set_busy(self, busy):
+    def set_busy(self, busy, active=False, label="Working..."):
         self.install_btn.setEnabled(not busy)
-        if busy:
-            self.status_label.setText("● Working...")
+        if self.preview_btn is not None:
+            self.preview_btn.setEnabled(not busy)
+
+        if busy and active:
+            self.status_label.setText(f"● {label}")
             self.status_label.setStyleSheet(
                 "color: {}; font-size: 11px; font-weight: 600; background: transparent;".format(
                     self.palette["accent"]))
+        elif busy:
+            # Os outros cards ficam só desactivados; não mudam de estado.
+            return
+        else:
+            self.status_label.setStyleSheet(
+                "color: {}; font-size: 11px; font-weight: 600; background: transparent;".format(
+                    self.palette["success"]))
 
 
 # ----------------------------------------------------------------------
@@ -171,11 +203,14 @@ class MainWindow(QMainWindow):
         self.resize(1040, 740)
 
         self.catalogue = load_catalogue()
+        self.installer = Installer()
         self.cards = {}
         self.installed_state = set()
         self.install_worker = None
         self.status_worker = None
         self.busy = False
+        self.busy_label = "Working..."
+        self.active_app_id = None
 
         self.theme_name = theme_mod.load_saved_theme()
         self.palette = theme_mod.get_palette(self.theme_name)
@@ -216,7 +251,7 @@ class MainWindow(QMainWindow):
 
         self.category_list = QListWidget()
         self.category_list.setObjectName("CategoryList")
-        all_item = QListWidgetItem("All")
+        all_item = QListWidgetItem(f"All  ·  {len(self.catalogue)}")
         all_item.setData(Qt.UserRole, "All")
         self.category_list.addItem(all_item)
         for category in sorted({app["category"] for app in self.catalogue}):
@@ -263,6 +298,7 @@ class MainWindow(QMainWindow):
         self.console.setObjectName("Console")
         self.console.setReadOnly(True)
         self.console.setMaximumHeight(170)
+        self.console.setVisible(False)  # aparece na primeira instalação
         main_layout.addWidget(self.console)
 
         self.theme_shortcut = QShortcut(QKeySequence("Ctrl+D"), self)
@@ -307,7 +343,8 @@ class MainWindow(QMainWindow):
         category = item.data(Qt.UserRole) if item else "All"
         return [
             app for app in self.catalogue
-            if (not text or text in app["name"].lower() or text in app["description"].lower())
+            if (not text or text in app["name"].lower() or text in app["description"].lower()
+                or text in app["category"].lower())
             and (category in ("", "All") or app["category"] == category)
         ]
 
@@ -336,7 +373,11 @@ class MainWindow(QMainWindow):
             card = AppCard(app, self.handle_install, self.palette, self.theme_name)
             # Preserva o estado conhecido ao filtrar ou trocar de tema.
             card.mark_installed(app["id"] in self.installed_state)
-            card.set_busy(self.busy)
+            card.set_busy(
+                self.busy,
+                active=app["id"] == self.active_app_id,
+                label=self.busy_label,
+            )
             self.cards[app["id"]] = card
             self.app_container.addWidget(card)
 
@@ -365,7 +406,11 @@ class MainWindow(QMainWindow):
         card = self.cards.get(app_id)
         if card:
             card.mark_installed(installed)
-            card.set_busy(self.busy)
+            card.set_busy(
+                self.busy,
+                active=app_id == self.active_app_id,
+                label=self.busy_label,
+            )
         self._update_summary()
 
     # ------------------------------------------------------------------
@@ -377,35 +422,87 @@ class MainWindow(QMainWindow):
         self.console.verticalScrollBar().setValue(
             self.console.verticalScrollBar().maximum())
 
-    def set_all_busy(self, busy):
+    def set_all_busy(self, busy, active_id=None, label="Working..."):
         self.busy = busy
-        for card in self.cards.values():
-            card.set_busy(busy)
+        self.active_app_id = active_id if busy else None
+        self.busy_label = label
+        for app_id, card in self.cards.items():
+            card.set_busy(busy, active=app_id == self.active_app_id, label=label)
 
-    def handle_install(self, app_data):
+    def handle_install(self, app_data, dry_run=False):
         if self.install_worker and self.install_worker.isRunning():
             self.log("[!] An installation is already running.", self.palette["console_warn"])
             return
 
-        pkg = app_data["package_name"]
-        ptype = app_data.get("package_type")
+        ptype = app_data.get("package_type", "native")
+
+        if ptype == "script" and not dry_run and not self._confirm_script(app_data):
+            return
 
         self.console.clear()
-        self.set_all_busy(True)
-        self.log(
-            f"[*] Installing {app_data['name']} ({ptype or 'native'})...",
-            self.palette["console_cmd"],
+        self.console.setVisible(True)
+        self.set_all_busy(
+            True,
+            app_data["id"],
+            "Previewing..." if dry_run else "Working...",
         )
 
-        self.install_worker = InstallWorker(pkg, ptype)
+        if dry_run:
+            self.log(
+                f"[i] Preview of {app_data['name']} (nothing will be installed)...",
+                self.palette["console_cmd"],
+            )
+        elif ptype == "script":
+            self.log(
+                f"[*] Running {app_data['name']} setup...",
+                self.palette["console_cmd"],
+            )
+        else:
+            self.log(
+                f"[*] Installing {app_data['name']} ({ptype})...",
+                self.palette["console_cmd"],
+            )
+
+        self.install_worker = InstallWorker(app_data, dry_run=dry_run)
         self.install_worker.line.connect(lambda line: self.log(line))
         self.install_worker.done.connect(
             lambda result: self.on_install_done(app_data, result))
         self.install_worker.start()
 
+    def _confirm_script(self, app_data):
+        """Pede confirmação antes de correr um script que mexe no sistema."""
+        script = self.installer.sys_info.resolve_script(app_data)
+        if not script:
+            family = self.installer.sys_info.family or "your distro"
+            self.log(f"[-] No setup script available for {family}.",
+                     self.palette["console_err"])
+            return False
+
+        manager = self.installer.sys_info.package_manager or "the system package manager"
+        answer = QMessageBox.question(
+            self,
+            "Run setup script?",
+            "<b>{}</b> will install packages with <b>{}</b> and Flatpak, and will "
+            "ask for your password.<br><br>Script: <code>{}</code><br><br>"
+            "Use <b>Preview</b> to see every command first.<br>Continue?".format(
+                html.escape(app_data["name"]), manager, os.path.basename(script)),
+            QMessageBox.Cancel | QMessageBox.Ok,
+            QMessageBox.Cancel,
+        )
+        return answer == QMessageBox.Ok
+
     def on_install_done(self, app_data, result):
         self.set_all_busy(False)
         card = self.cards.get(app_data["id"])
+
+        if result["status"] == "success" and result.get("dry_run"):
+            self.log(
+                f"[i] {app_data['name']}: preview finished, nothing was changed.",
+                self.palette["console_ok"],
+            )
+            if card:
+                card.mark_installed(app_data["id"] in self.installed_state)
+            return
 
         if result["status"] == "success":
             self.installed_state.add(app_data["id"])

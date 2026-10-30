@@ -1,4 +1,5 @@
 import sys
+import os
 import argparse
 
 # Componentes da UI (opcionais: o app funciona em modo CLI sem PySide6)
@@ -19,6 +20,7 @@ def print_system_info():
     print("--- LinuxUtil Studio: system info ---")
     print(f"Distro         : {info.distro}")
     print(f"Package manager: {info.package_manager}")
+    print(f"Family         : {info.family}")
     print(f"Flatpak        : {'yes' if info.has_flatpak else 'no'}")
     print(f"Snap           : {'yes' if info.has_snap else 'no'}")
     print(f"Privilege tool : {info.privilege_tool}")
@@ -27,28 +29,46 @@ def print_system_info():
 
 def list_apps():
     catalogue = load_catalogue()
-    print(f"{'ID':<12} {'TYPE':<9} {'STATUS':<10} NAME")
-    print("-" * 60)
+    installer = Installer()
+    info = installer.sys_info
+    print(f"{'ID':<14} {'TYPE':<9} {'TARGET':<34} {'STATUS':<10} NAME")
+    print("-" * 100)
     for app in catalogue:
         ptype = app.get("package_type", "native")
-        installed = Installer().is_installed(app["package_name"], ptype)
+        if ptype == "script":
+            target = os.path.basename(info.resolve_script(app) or "-")
+        elif ptype == "flatpak":
+            target = app["package_name"]
+        elif ptype == "snap":
+            target = app["package_name"]
+        else:
+            target = info.resolve_package(app) or "-"
+        installed = installer.is_installed(app)
         status = "installed" if installed else "-"
-        print(f"{app['id']:<12} {ptype:<9} {status:<10} {app['name']} ({app['category']})")
+        print(f"{app['id']:<14} {ptype:<9} {target:<34} {status:<10} {app['name']} ({app['category']})")
     return catalogue
 
 
-def install(app_id):
+def install(app_id, dry_run=False):
     catalogue = load_catalogue()
     target = next((a for a in catalogue if a["id"] == app_id), None)
     if not target:
         print(f"App '{app_id}' not found in the catalogue.")
         return 1
 
-    print(f"Installing {target['name']} ({target.get('package_type', 'native')})...\n")
-    result = Installer().run_install(
-        target["package_name"],
-        target.get("package_type"),
+    installer = Installer()
+    ptype = target.get("package_type", "native")
+    if ptype == "script" and not dry_run:
+        print(f"Running setup script for {target['name']} (asks for your password)...\n")
+    elif dry_run:
+        print(f"Preview for {target['name']} (nothing will be installed)...\n")
+    else:
+        print(f"Installing {target['name']} ({ptype})...\n")
+
+    result = installer.run_install(
+        target,
         on_output=lambda line: print(line, flush=True),
+        dry_run=dry_run,
     )
     print(f"\nResult: {result['status']} - {result['message']}")
     return 0 if result["status"] == "success" else 1
@@ -77,9 +97,8 @@ def run_cli():
         print("Invalid selection.")
         return 1
 
-    result = Installer().run_install(
-        target["package_name"],
-        target.get("package_type"),
+    result = installer.run_install(
+        target,
         on_output=lambda line: print(line, flush=True),
     )
     print(f"Result: {result['status']} - {result['message']}")
@@ -92,6 +111,8 @@ def main():
     parser.add_argument("--list", action="store_true", help="list catalogue apps and exit")
     parser.add_argument("--info", action="store_true", help="show detected system info and exit")
     parser.add_argument("--install", metavar="ID", help="install an app by catalogue ID and exit")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="with --install/--cli: preview setup scripts without changing anything")
     args = parser.parse_args()
 
     if args.info:
@@ -101,7 +122,7 @@ def main():
         list_apps()
         return 0
     if args.install:
-        return install(args.install)
+        return install(args.install, dry_run=args.dry_run)
     if args.cli or not GUI_AVAILABLE:
         if not GUI_AVAILABLE and not args.cli:
             print("PySide6 not found - falling back to CLI mode.\n")

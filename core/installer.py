@@ -9,21 +9,42 @@ class Installer:
     # ------------------------------------------------------------------
     # Estado
     # ------------------------------------------------------------------
-    def is_installed(self, package_name, package_type=None):
-        """Verifica se o pacote já está presente no sistema."""
-        cmd = self.sys_info.get_check_command(package_name, package_type)
-        if not cmd:
-            return False
+    @staticmethod
+    def _command_ok(cmd, timeout=15):
         try:
             result = subprocess.run(
                 cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                timeout=15,
+                timeout=timeout,
             )
             return result.returncode == 0
         except Exception:
             return False
+
+    def is_installed(self, app):
+        """Verifica se o app já está presente no sistema.
+
+        Entradas do tipo ``script`` (packs) declaram em ``check`` os pacotes que
+        provam que o pack já foi aplicado.
+        """
+        if app.get("package_type") == "script":
+            checks = app.get("check") or []
+            if not checks:
+                return False
+            return all(
+                self._command_ok(
+                    self.sys_info.get_check_command(
+                        {"package_name": name, "package_type": "native"}
+                    )
+                )
+                for name in checks
+            )
+
+        cmd = self.sys_info.get_check_command(app)
+        if not cmd:
+            return False
+        return self._command_ok(cmd)
 
     # ------------------------------------------------------------------
     # Instalação
@@ -42,22 +63,37 @@ class Installer:
             )
         return f"Command failed (exit {returncode}): {' '.join(cmd)}"
 
-    def run_install(self, package_name, package_type=None, on_output=None):
+    def _no_installer_message(self, app):
+        package_type = app.get("package_type", "native")
+        name = app.get("name", app.get("id", "?"))
+        if package_type == "flatpak" and not self.sys_info.has_flatpak:
+            return f"{name} needs Flatpak, which is not installed on this system."
+        if package_type == "snap" and not self.sys_info.has_snap:
+            return f"{name} needs Snap, which is not installed on this system."
+        if package_type == "script":
+            family = self.sys_info.family or "this distro"
+            return f"No setup script available for {family}."
+        if not self.sys_info.package_manager:
+            return f"No supported package manager found for {name}."
+        return f"No suitable installer found for {name} on this system."
+
+    def run_install(self, app, on_output=None, dry_run=False):
         """
-        Executa a instalação.
+        Executa a instalação (ou a pré-visualização, quando ``dry_run``).
 
         on_output: callable(str) opcional, chamado a cada linha de log
                    (usado pela GUI para streaming em tempo real).
         """
-        commands = self.sys_info.get_install_commands(package_name, package_type)
+        commands = self.sys_info.get_install_commands(app, dry_run=dry_run)
         if not commands:
             return {
                 "status": "error",
-                "message": f"No suitable installer found for {package_name} on this system.",
+                "message": self._no_installer_message(app),
                 "output": [],
             }
 
         full_output = []
+        name = app.get("name", app.get("id", "?"))
 
         def emit(line):
             full_output.append(line)
@@ -96,8 +132,16 @@ class Installer:
             except Exception as e:
                 return {"status": "error", "message": str(e), "output": full_output}
 
+        if dry_run:
+            return {
+                "status": "success",
+                "message": f"Preview for {name} finished (nothing was changed).",
+                "output": full_output,
+                "dry_run": True,
+            }
+
         return {
             "status": "success",
-            "message": f"Successfully installed {package_name}",
+            "message": f"Successfully installed {name}",
             "output": full_output,
         }
