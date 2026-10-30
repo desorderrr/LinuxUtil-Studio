@@ -1,37 +1,89 @@
 import subprocess
 from core.system_info import SystemInfo
 
+
 class Installer:
     def __init__(self):
         self.sys_info = SystemInfo()
 
-    def run_install(self, package_name, package_type=None):
-        command = self.sys_info.get_install_command(package_name, package_type)
-        if not command:
-            return {"status": "error", "message": f"No suitable installer found for {package_name} on this system."}
-
+    # ------------------------------------------------------------------
+    # Estado
+    # ------------------------------------------------------------------
+    def is_installed(self, package_name, package_type=None):
+        """Verifica se o pacote já está presente no sistema."""
+        cmd = self.sys_info.get_check_command(package_name, package_type)
+        if not cmd:
+            return False
         try:
-            # Executa o comando
-            process = subprocess.Popen(
-                command, 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT, 
-                text=True,
-                shell=True
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=15,
             )
+            return result.returncode == 0
+        except Exception:
+            return False
 
-            output = []
-            for line in process.stdout:
-                clean_line = line.strip()
-                print(clean_line) # Debug inicial
-                output.append(clean_line)
-            
-            process.wait()
-            
-            if process.returncode == 0:
-                return {"status": "success", "message": f"Successfully installed {package_name}", "output": output}
-            else:
-                return {"status": "error", "message": f"Failed to install {package_name}", "output": output}
+    # ------------------------------------------------------------------
+    # Instalação
+    # ------------------------------------------------------------------
+    def run_install(self, package_name, package_type=None, on_output=None):
+        """
+        Executa a instalação.
 
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        on_output: callable(str) opcional, chamado a cada linha de log
+                   (usado pela GUI para streaming em tempo real).
+        """
+        commands = self.sys_info.get_install_commands(package_name, package_type)
+        if not commands:
+            return {
+                "status": "error",
+                "message": f"No suitable installer found for {package_name} on this system.",
+                "output": [],
+            }
+
+        full_output = []
+
+        def emit(line):
+            full_output.append(line)
+            if on_output:
+                try:
+                    on_output(line)
+                except Exception:
+                    pass
+
+        for cmd in commands:
+            emit(f"$ {' '.join(cmd)}")
+            try:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                for line in process.stdout:
+                    emit(line.rstrip())
+                process.wait()
+
+                if process.returncode != 0:
+                    return {
+                        "status": "error",
+                        "message": f"Command failed (exit {process.returncode}): {' '.join(cmd)}",
+                        "output": full_output,
+                    }
+            except FileNotFoundError:
+                return {
+                    "status": "error",
+                    "message": f"Command not found: {cmd[0]}",
+                    "output": full_output,
+                }
+            except Exception as e:
+                return {"status": "error", "message": str(e), "output": full_output}
+
+        return {
+            "status": "success",
+            "message": f"Successfully installed {package_name}",
+            "output": full_output,
+        }

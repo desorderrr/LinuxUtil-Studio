@@ -1,7 +1,7 @@
 import sys
 import argparse
 
-# Importar componentes da UI se estivermos no modo GUI
+# Componentes da UI (opcionais: o app funciona em modo CLI sem PySide6)
 try:
     from ui.main_window import MainWindow
     from PySide6.QtWidgets import QApplication
@@ -13,53 +13,104 @@ from core.system_info import SystemInfo
 from core.installer import Installer
 from core.catalogue_loader import load_catalogue
 
-def run_cli_test():
-    print("--- LinuxUtil Studio (CLI Test Mode) ---")
-    sys_info = SystemInfo()
-    print(f"Detected System: {sys_info.distro}")
-    print(f"Package Manager: {sys_info.package_manager}")
-    print("-" * 30)
 
+def print_system_info():
+    info = SystemInfo()
+    print("--- LinuxUtil Studio: system info ---")
+    print(f"Distro         : {info.distro}")
+    print(f"Package manager: {info.package_manager}")
+    print(f"Flatpak        : {'yes' if info.has_flatpak else 'no'}")
+    print(f"Snap           : {'yes' if info.has_snap else 'no'}")
+    print(f"GUI available  : {'yes' if GUI_AVAILABLE else 'no (install PySide6)'}")
+
+
+def list_apps():
     catalogue = load_catalogue()
-    
-    print("Available Apps:")
+    print(f"{'ID':<12} {'TYPE':<9} {'STATUS':<10} NAME")
+    print("-" * 60)
     for app in catalogue:
-        ptype = app.get('package_type', 'apt')
-        print(f"[{app['id']}] {app['name']} - {app['description']} ({app['category']}) [{ptype}]")
-    
-    print("-" * 30)
-    choice = input("Enter an App ID to install (or 'q' to quit): ")
-    
-    if choice.lower() == 'q':
-        sys.exit()
+        ptype = app.get("package_type", "native")
+        installed = Installer().is_installed(app["package_name"], ptype)
+        status = "installed" if installed else "-"
+        print(f"{app['id']:<12} {ptype:<9} {status:<10} {app['name']} ({app['category']})")
+    return catalogue
 
-    target_app = next((app for app in catalogue if app['id'] == choice), None)
-    
-    if target_app:
-        print(f"Starting installation of {target_app['name']}...")
-        installer = Installer()
-        result = installer.run_install(target_app['package_name'], target_app.get('package_type'))
-        print(f"Result: {result['status']}")
-        if result['status'] == 'success':
-            print("Successfully installed!")
-        else:
-            print(f"Error: {result['message']}")
-    else:
+
+def install(app_id):
+    catalogue = load_catalogue()
+    target = next((a for a in catalogue if a["id"] == app_id), None)
+    if not target:
+        print(f"App '{app_id}' not found in the catalogue.")
+        return 1
+
+    print(f"Installing {target['name']} ({target.get('package_type', 'native')})...\n")
+    result = Installer().run_install(
+        target["package_name"],
+        target.get("package_type"),
+        on_output=lambda line: print(line, flush=True),
+    )
+    print(f"\nResult: {result['status']} - {result['message']}")
+    return 0 if result["status"] == "success" else 1
+
+
+def run_cli():
+    info = SystemInfo()
+    print("--- LinuxUtil Studio (CLI) ---")
+    print(f"Detected: {info.distro} | Manager: {info.package_manager}")
+    print("-" * 30)
+
+    catalogue = list_apps()
+
+    print("-" * 30)
+    try:
+        choice = input("App ID to install (or 'q' to quit): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return 0
+
+    if choice.lower() in ("q", ""):
+        return 0
+
+    target = next((a for a in catalogue if a["id"] == choice), None)
+    if not target:
         print("Invalid selection.")
+        return 1
+
+    result = Installer().run_install(
+        target["package_name"],
+        target.get("package_type"),
+        on_output=lambda line: print(line, flush=True),
+    )
+    print(f"Result: {result['status']} - {result['message']}")
+    return 0 if result["status"] == "success" else 1
+
 
 def main():
-    parser = argparse.ArgumentParser(description="LinuxUtil Studio")
-    parser.add_argument("--cli", action="store_true", help="Run in CLI mode for debugging")
+    parser = argparse.ArgumentParser(description="LinuxUtil Studio - the Linux setup app, rebuilt.")
+    parser.add_argument("--cli", action="store_true", help="run in interactive CLI mode")
+    parser.add_argument("--list", action="store_true", help="list catalogue apps and exit")
+    parser.add_argument("--info", action="store_true", help="show detected system info and exit")
+    parser.add_argument("--install", metavar="ID", help="install an app by catalogue ID and exit")
     args = parser.parse_args()
 
+    if args.info:
+        print_system_info()
+        return 0
+    if args.list:
+        list_apps()
+        return 0
+    if args.install:
+        return install(args.install)
     if args.cli or not GUI_AVAILABLE:
-        run_cli_test()
-    else:
-        # Modo GUI
-        app = QApplication(sys.argv)
-        window = MainWindow()
-        window.show()
-        sys.exit(app.exec())
+        if not GUI_AVAILABLE and not args.cli:
+            print("PySide6 not found - falling back to CLI mode.\n")
+        return run_cli()
+
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    return app.exec()
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -14,46 +14,83 @@ It is a UI-focused version of the logic used in **MacUtil**.
 
 ## Features
 
-- **Native Look:** Built with PySide6 (Qt) for a smooth, professional desktop experience.
-- **Auto-Detection:** Automatically detects your Distribution (Ubuntu, Fedora, Arch, openSUSE, etc.) and uses the correct native package manager (`apt`, `dnf`, `pacman`, `zypper`).
-- **Multi-Format Support:** Install apps from Native repositories, **Flatpak**, or **Snap** with a single click.
-- **Search & Filter:** Quickly find the apps you need by name, description, or category.
-- **Real-time Logs:** A dedicated console shows exactly what is happening during installation with color-coded output.
-- **Easy Management:** Browse through a catalogue of apps organized by category.
+- **Native look:** built with PySide6 (Qt) for a smooth desktop experience.
+- **Auto-detection:** detects your distribution and picks the right package manager (`apt`, `dnf`, `pacman`, `zypper`).
+- **Multi-format support:** install from native repositories, **Flatpak** or **Snap**.
+- **Non-blocking installs:** installations run in a background thread, so the window never freezes.
+- **Live logs:** every line of output is streamed to the console in real time, with colour coding.
+- **Installed detection:** apps already present on the system are flagged automatically.
+- **Search & filter:** find apps by name/description and narrow down by category.
 
 ## Installation & Running
 
 ### Prerequisites
 - Python 3.10+
-- Your system's package manager (apt, dnf, or pacman are supported)
+- A native package manager (`apt`, `dnf`, `pacman` or `zypper`)
+- Optional: `flatpak` and/or `snap` for the apps that use those formats
 
 ### Setup
-1. Clone this repository:
-   ```bash
-   git clone <your-repo-url>
-   cd linuxutil-studio
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the application:
-   ```bash
-   python3 main.py
-   ```
 
-*To run in CLI mode for debugging:*
 ```bash
-python3 main.py --cli
+git clone https://github.com/desorderrr/LinuxUtil-Studio.git
+cd LinuxUtil-Studio
+pip install -r requirements.txt
+python3 main.py
 ```
 
-## Catalogue
-The catalogue is managed in `catalogue.json`. You can add your own custom scripts and apps easily by adding entries to this file.
+## CLI usage
 
-### Supported Distributions:
-- Debian/Ubuntu (apt)
-- Fedora/RHEL (dnf)
-- Arch Linux (pacman)
+The backend also works without a GUI:
+
+```bash
+python3 main.py --info          # detected distro, package manager, flatpak/snap
+python3 main.py --list          # catalogue + which apps are already installed
+python3 main.py --install git   # install an app by its catalogue ID
+python3 main.py --cli           # interactive mode
+```
+
+## The catalogue
+
+Apps live in `catalogue.json`:
+
+```json
+{
+    "id": "spotify",
+    "name": "Spotify",
+    "description": "Music streaming client (Flatpak / Flathub).",
+    "category": "Media",
+    "package_name": "com.spotify.Client",
+    "package_type": "flatpak"
+}
+```
+
+- `package_type` may be `native` (uses the detected system manager), `flatpak` or `snap`.
+- `package_name` is the name used by the underlying manager.
+
+## Project structure
+
+```
+main.py                  # entry point (GUI + CLI)
+catalogue.json           # app catalogue
+core/system_info.py      # distro + package manager detection, command building
+core/installer.py        # command execution, streaming and installed checks
+core/catalogue_loader.py # catalogue loading/normalisation
+ui/main_window.py        # PySide6 interface and background workers
+```
+
+## Supported distributions
+
+| Family | Manager |
+| :--- | :--- |
+| Debian / Ubuntu / Mint / Pop!_OS | `apt` |
+| Fedora / RHEL / CentOS | `dnf` |
+| Arch / Manjaro / EndeavourOS | `pacman` |
+| openSUSE | `zypper` |
+
+## Security note
+
+Installing system packages requires `sudo`. LinuxUtil Studio asks for the sudo password in the terminal that launched it — it never stores or handles credentials itself.
 
 ## License
-MIT — see [LICENSE](LICENSE)
+
+MIT — see [LICENSE](LICENSE).

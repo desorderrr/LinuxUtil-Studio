@@ -2,39 +2,87 @@
     {
         "id": "git",
         "name": "Git",
-        "description": "Distributed version control.",
-        "category": "Dev",
+        "description": "Distributed version control system.",
+        "category": "Development",
         "package_name": "git",
-        "package_type": "apt"
+        "package_type": "native"
     },
     {
         "id": "neovim",
         "name": "Neovim",
-        "description": "Extensible Vim-based editor.",
-        "category": "Dev",
+        "description": "Extensible Vim-based text editor.",
+        "category": "Development",
         "package_name": "neovim",
-        "package_type": "apt"
+        "package_type": "native"
     },
     {
-        "id": "curl",
-        "name": "Curl",
-        "description": "Network tool.",
-        "category": "Utils",
-        "package_name": "curl",
-        "package_type": "apt"
+        "id": "vscode",
+        "name": "Visual Studio Code",
+        "description": "Code editor with debugging and Git integration.",
+        "category": "Development",
+        "package_name": "code",
+        "package_type": "native"
+    },
+    {
+        "id": "python3",
+        "name": "Python 3",
+        "description": "High-level programming language interpreter.",
+        "category": "Development",
+        "package_name": "python3",
+        "package_type": "native"
     },
     {
         "id": "htop",
-        "name": "Htop",
-        "description": "Process viewer.",
+        "name": "htop",
+        "description": "Interactive process viewer for the terminal.",
         "category": "System",
         "package_name": "htop",
-        "package_type": "apt"
+        "package_type": "native"
+    },
+    {
+        "id": "curl",
+        "name": "cURL",
+        "description": "Command-line tool for transferring data with URLs.",
+        "category": "Utilities",
+        "package_name": "curl",
+        "package_type": "native"
+    },
+    {
+        "id": "wget",
+        "name": "Wget",
+        "description": "Retrieves files from the web via HTTP, HTTPS and FTP.",
+        "category": "Utilities",
+        "package_name": "wget",
+        "package_type": "native"
+    },
+    {
+        "id": "unzip",
+        "name": "Unzip",
+        "description": "Extracts .zip archives from the command line.",
+        "category": "Utilities",
+        "package_name": "unzip",
+        "package_type": "native"
+    },
+    {
+        "id": "vlc",
+        "name": "VLC",
+        "description": "Plays almost every audio and video format.",
+        "category": "Media",
+        "package_name": "vlc",
+        "package_type": "native"
+    },
+    {
+        "id": "gimp",
+        "name": "GIMP",
+        "description": "Image editor for photo retouching and design.",
+        "category": "Graphics",
+        "package_name": "gimp",
+        "package_type": "native"
     },
     {
         "id": "spotify",
         "name": "Spotify",
-        "description": "Music streaming.",
+        "description": "Music streaming client (Flatpak / Flathub).",
         "category": "Media",
         "package_name": "com.spotify.Client",
         "package_type": "flatpak"
@@ -42,7 +90,7 @@
     {
         "id": "discord",
         "name": "Discord",
-        "description": "Voice and text chat.",
+        "description": "Voice, video and text chat (Snap).",
         "category": "Social",
         "package_name": "discord",
         "package_type": "snap"

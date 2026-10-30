@@ -1,20 +1,32 @@
 import json
 import os
 
-def load_catalogue():
-    catalogue_path = "catalogue.json"
-    
-    if not os.path.exists(catalogue_path):
-        example_data = [
-            {"id": "git", "name": "Git", "description": "Distributed version control.", "category": "Dev", "package_name": "git", "package_type": "apt"},
-            {"id": "neovim", "name": "Neovim", "description": "Extensible Vim-based editor.", "category": "Dev", "package_name": "neovim", "package_type": "apt"},
-            {"id": "curl", "name": "Curl", "description": "Network tool.", "category": "Utils", "package_name": "curl", "package_type": "apt"},
-            {"id": "htop", "name": "Htop", "description": "Process viewer.", "category": "System", "package_name": "htop", "package_type": "apt"},
-            {"id": "spotify", "name": "Spotify", "description": "Music streaming.", "category": "Media", "package_name": "com.spotify.Client", "package_type": "flatpak"},
-            {"id": "discord", "name": "Discord", "description": "Voice and text chat.", "category": "Social", "package_name": "discord", "package_type": "snap"}
-        ]
-        with open(catalogue_path, "w") as f:
-            json.dump(example_data, f, indent=4)
-            
-    with open(catalogue_path, "r") as f:
-        return json.load(f)
+CATALOGUE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "catalogue.json")
+
+DEFAULT_CATALOGUE = [
+    {"id": "git", "name": "Git", "description": "Distributed version control.",
+     "category": "Development", "package_name": "git", "package_type": "native"},
+    {"id": "htop", "name": "htop", "description": "Interactive process viewer.",
+     "category": "System", "package_name": "htop", "package_type": "native"},
+    {"id": "curl", "name": "cURL", "description": "Transfer data with URLs.",
+     "category": "Utilities", "package_name": "curl", "package_type": "native"},
+]
+
+
+def load_catalogue(path=None):
+    """Carrega o catálogo. Se o arquivo não existir, cria um exemplo padrão."""
+    path = path or CATALOGUE_PATH
+
+    if not os.path.exists(path):
+        with open(path, "w") as f:
+            json.dump(DEFAULT_CATALOGUE, f, indent=4)
+        return list(DEFAULT_CATALOGUE)
+
+    with open(path, "r") as f:
+        data = json.load(f)
+
+    # Normaliza campos opcionais
+    for app in data:
+        app.setdefault("package_type", "native")
+        app.setdefault("category", "Other")
+    return data
