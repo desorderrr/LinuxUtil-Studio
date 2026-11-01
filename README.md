@@ -107,7 +107,50 @@ exact command that is running and every line it prints.
 - **Steam via Flatpak on purpose**, so the scripts never touch RPM Fusion,
   i386 multiarch or `[multilib]`.
 
-## Quick start
+## Installation
+
+Pick whichever method suits you best. All of them end up launching the same
+application.
+
+### Option 1 — One-line installer (recommended)
+
+Downloads nothing extra; just uses the repo you already cloned:
+
+```bash
+git clone git@github.com:desorderrr/LinuxUtil-Studio.git
+cd LinuxUtil-Studio
+bash install.sh
+```
+
+`install.sh` copies the project to `~/.local/share/linuxutil-studio`, creates a
+virtualenv, installs PySide6, and drops a `LinuxUtil Studio` shortcut in your
+application menu. Works regardless of your current working directory.
+
+### Option 2 — AppImage
+
+Grab `LinuxUtil_Studio-x86_64.AppImage` from the
+[latest release](https://github.com/desorderrr/LinuxUtil-Studio/releases/latest),
+then:
+
+```bash
+chmod +x LinuxUtil_Studio-x86_64.AppImage
+./LinuxUtil_Studio-x86_64.AppImage
+```
+
+No installation, no root, no Python required on the host.
+
+### Option 3 — Flatpak
+
+Grab `linuxutil-studio.flatpak` from the
+[latest release](https://github.com/desorderrr/LinuxUtil-Studio/releases/latest),
+then:
+
+```bash
+flatpak install --user ./linuxutil-studio.flatpak
+flatpak run com.linuxutilstudio.Studio
+```
+
+### Option 4 — From source
 
 ```bash
 git clone git@github.com:desorderrr/LinuxUtil-Studio.git
