@@ -112,6 +112,14 @@ exact command that is running and every line it prints.
 Pick whichever method suits you best. All of them end up launching the same
 application.
 
+### Option 0 — One command, straight from the repo
+
+No releases, no manual downloads. Clone and install in one line:
+
+```bash
+git clone --depth 1 git@github.com:desorderrr/LinuxUtil-Studio.git ~/LinuxUtil-Studio && bash ~/LinuxUtil-Studio/install.sh
+```
+
 ### Option 1 — One-line installer (recommended)
 
 Downloads nothing extra; just uses the repo you already cloned:
