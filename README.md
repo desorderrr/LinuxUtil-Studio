@@ -149,10 +149,10 @@ application.
 
 ### Option 0 — One command, straight from the repo
 
-No releases, no manual downloads. Clone and install in one line:
+No binary release download required. Clone and install in one line:
 
 ```bash
-git clone --depth 1 git@github.com:desorderrr/LinuxUtil-Studio.git ~/LinuxUtil-Studio && bash ~/LinuxUtil-Studio/install.sh
+git clone --depth 1 https://github.com/desorderrr/LinuxUtil-Studio.git ~/LinuxUtil-Studio && bash ~/LinuxUtil-Studio/install.sh
 ```
 
 ### Option 1 — One-line installer (recommended)
@@ -160,7 +160,7 @@ git clone --depth 1 git@github.com:desorderrr/LinuxUtil-Studio.git ~/LinuxUtil-S
 Downloads nothing extra; just uses the repo you already cloned:
 
 ```bash
-git clone git@github.com:desorderrr/LinuxUtil-Studio.git
+git clone https://github.com/desorderrr/LinuxUtil-Studio.git
 cd LinuxUtil-Studio
 bash install.sh
 ```
@@ -171,45 +171,46 @@ application menu. Works regardless of your current working directory.
 
 ### Option 2 — AppImage
 
-Grab `LinuxUtil_Studio-x86_64.AppImage` from the
-[latest release](https://github.com/desorderrr/LinuxUtil-Studio/releases/latest),
-then:
+An AppImage is not currently published. Use the source installer above, or
+build from source:
 
 ```bash
-chmod +x LinuxUtil_Studio-x86_64.AppImage
-./LinuxUtil_Studio-x86_64.AppImage
+git clone https://github.com/desorderrr/LinuxUtil-Studio.git
+cd LinuxUtil-Studio
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python main.py
 ```
 
-No installation, no root, no Python required on the host.
+An AppImage release will be linked here once a verified bundle is available.
 
 ### Option 3 — Flatpak (experimental)
 
 > **Experimental.** The Flatpak runs the UI inside the sandbox but delegates
 > package installation to the host through `flatpak-spawn --host`. It is
 > functional on Fedora and Arch, but not yet validated on every desktop, so
-> prefer the AppImage or `install.sh` for daily use.
+> prefer the source installer for daily use.
 
-Grab `linuxutil-studio.flatpak` from the
-[latest release](https://github.com/desorderrr/LinuxUtil-Studio/releases/latest),
-then:
+No prebuilt Flatpak bundle is currently published. Build it locally:
+
+```bash
+bash flatpak/build.sh
+```
+
+Then install the generated bundle:
 
 ```bash
 flatpak install --user ./linuxutil-studio.flatpak
 flatpak run com.linuxutilstudio.Studio
 ```
 
-To build it yourself (downloads the PySide6 wheels first, then builds offline):
-
-```bash
-bash flatpak/build.sh
-```
-
 Requirements: `flatpak-builder` and `org.freedesktop.Sdk//25.08`.
+The Flatpak remains experimental; see the caveat above before using it.
 
 ### Option 4 — From source
 
 ```bash
-git clone git@github.com:desorderrr/LinuxUtil-Studio.git
+git clone https://github.com/desorderrr/LinuxUtil-Studio.git
 cd LinuxUtil-Studio
 
 python3 -m venv .venv
