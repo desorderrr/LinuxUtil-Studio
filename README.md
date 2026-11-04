@@ -537,6 +537,7 @@ ui/
 
 assets/
   banner.svg                # README banner
+  logo.svg / logo.png       # project mark used as the app icon
   logos/                    # 39 brand logos (Simple Icons, CC0) + attribution
   screenshots/              # README screenshots
 
