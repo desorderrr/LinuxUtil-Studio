@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-04
+
 ### Fixed
 
 - CLI interactive mode (`--cli`) no longer crashes because `installer` was
