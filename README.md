@@ -210,6 +210,9 @@ password, through the desktop's own polkit dialog.
    The app never sees or stores the password.
 4. **Done.** The card turns into *Reinstall* and gets the *Installed* badge.
 
+Use **Cancel installation** to stop the active command if needed. Package
+changes completed before cancellation are not rolled back.
+
 | Shortcut | Action |
 | :--- | :--- |
 | `Ctrl+D` | Toggle light / dark theme |

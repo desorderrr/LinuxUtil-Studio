@@ -1,5 +1,6 @@
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 
@@ -20,6 +21,7 @@ class SystemInfo:
         self.os_name = platform.system().lower()
         self.is_flatpak = os.path.exists("/.flatpak-info")
         self.has_flatpak_spawn = shutil.which("flatpak-spawn") is not None
+        self.distro_like = []
         self.distro = self._get_distro()
         self.package_manager = self._get_package_manager()
         # Dentro do sandbox o binário `flatpak` pode não existir; o próprio app
@@ -96,14 +98,25 @@ class SystemInfo:
             return False
 
     def _get_distro(self):
+        os_release = {}
         if self.is_flatpak:
             try:
-                out = self._host_run(["cat", "/etc/os-release"]).stdout
-                for line in out.splitlines():
-                    if line.startswith("ID="):
-                        return line.split("=", 1)[1].strip().strip('"')
-            except Exception:
+                os_release = self._parse_os_release(
+                    self._host_run(["cat", "/etc/os-release"]).stdout
+                )
+            except (OSError, subprocess.TimeoutExpired):
                 pass
+        else:
+            try:
+                with open("/etc/os-release", encoding="utf-8") as handle:
+                    os_release = self._parse_os_release(handle.read())
+            except (OSError, UnicodeError):
+                pass
+
+        if os_release.get("ID"):
+            self.distro_like = os_release.get("ID_LIKE", "").split()
+            return os_release["ID"].lower()
+
         try:
             import distro
             return distro.id()
@@ -116,16 +129,54 @@ class SystemInfo:
                 return "arch"
             return "unknown"
 
+    @staticmethod
+    def _parse_os_release(contents):
+        values = {}
+        for line in contents.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            try:
+                parts = shlex.split(value, comments=False)
+            except ValueError:
+                continue
+            if parts:
+                values[key] = parts[0]
+        return values
+
     def _get_package_manager(self):
         dist = self.distro or ""
-        if dist in ["debian", "ubuntu", "linuxmint", "pop", "pop_os", "elementary", "zorin", "kali"]:
-            return "apt"
-        elif dist in ["fedora", "rhel", "centos", "rocky", "almalinux", "nobara"]:
-            return "dnf"
-        elif dist in ["arch", "manjaro", "endeavouros", "cachyos", "garuda", "artix"]:
-            return "pacman"
-        elif dist in ["opensuse", "suse", "opensuse-leap", "opensuse-tumbleweed"]:
-            return "zypper"
+        manager_by_distro = {
+            "debian": "apt",
+            "ubuntu": "apt",
+            "linuxmint": "apt",
+            "pop": "apt",
+            "pop_os": "apt",
+            "elementary": "apt",
+            "zorin": "apt",
+            "kali": "apt",
+            "fedora": "dnf",
+            "rhel": "dnf",
+            "centos": "dnf",
+            "rocky": "dnf",
+            "almalinux": "dnf",
+            "nobara": "dnf",
+            "arch": "pacman",
+            "manjaro": "pacman",
+            "endeavouros": "pacman",
+            "cachyos": "pacman",
+            "garuda": "pacman",
+            "artix": "pacman",
+            "opensuse": "zypper",
+            "opensuse-leap": "zypper",
+            "opensuse-tumbleweed": "zypper",
+            "suse": "zypper",
+        }
+        for candidate in (dist, *self.distro_like):
+            manager = manager_by_distro.get(candidate.lower())
+            if manager:
+                return manager
 
         # Fallback: dentro do Flatpak a distro pode não ser detetável,
         # por isso perguntamos ao host qual o gestor disponível.

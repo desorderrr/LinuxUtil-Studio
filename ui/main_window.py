@@ -1,6 +1,8 @@
 import sys
 import html
 import os
+import subprocess
+import threading
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
@@ -27,6 +29,10 @@ class InstallWorker(QThread):
         super().__init__()
         self.app_data = app_data
         self.dry_run = dry_run
+        self.cancel_event = threading.Event()
+
+    def cancel(self):
+        self.cancel_event.set()
 
     def run(self):
         installer = Installer()
@@ -34,6 +40,7 @@ class InstallWorker(QThread):
             self.app_data,
             on_output=self.line.emit,
             dry_run=self.dry_run,
+            cancel_event=self.cancel_event,
         )
         self.done.emit(result)
 
@@ -41,6 +48,7 @@ class InstallWorker(QThread):
 class StatusWorker(QThread):
     """Verifica em background quais apps do catálogo já estão instalados."""
     found = Signal(str, bool)
+    failed = Signal(str, str)
 
     def __init__(self, apps):
         super().__init__()
@@ -51,8 +59,9 @@ class StatusWorker(QThread):
         for app in self.apps:
             try:
                 installed = installer.is_installed(app)
-            except Exception:
-                installed = False
+            except (OSError, subprocess.TimeoutExpired) as error:
+                self.failed.emit(app["id"], str(error))
+                continue
             self.found.emit(app["id"], installed)
 
 
@@ -309,6 +318,10 @@ class MainWindow(QMainWindow):
         self.console.setReadOnly(True)
         self.console.setMaximumHeight(170)
         self.console.setVisible(False)  # aparece na primeira instalação
+        self.cancel_install_btn = QPushButton("Cancel installation")
+        self.cancel_install_btn.setVisible(False)
+        self.cancel_install_btn.clicked.connect(self.cancel_installation)
+        main_layout.addWidget(self.cancel_install_btn, alignment=Qt.AlignRight)
         main_layout.addWidget(self.console)
 
         self.theme_shortcut = QShortcut(QKeySequence("Ctrl+D"), self)
@@ -403,9 +416,10 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     # Verificação de estado
     # ------------------------------------------------------------------
-    def start_status_check(self):
-        self.status_worker = StatusWorker(self.catalogue)
+    def start_status_check(self, apps=None):
+        self.status_worker = StatusWorker(apps or self.catalogue)
         self.status_worker.found.connect(self.on_status_found)
+        self.status_worker.failed.connect(self.on_status_failed)
         self.status_worker.start()
 
     def on_status_found(self, app_id, installed):
@@ -423,6 +437,13 @@ class MainWindow(QMainWindow):
             )
         self._update_summary()
 
+    def on_status_failed(self, app_id, message):
+        self.console.setVisible(True)
+        self.log(
+            f"[!] Could not check installation state for {app_id}: {message}",
+            self.palette["console_warn"],
+        )
+
     # ------------------------------------------------------------------
     # Instalação
     # ------------------------------------------------------------------
@@ -436,8 +457,21 @@ class MainWindow(QMainWindow):
         self.busy = busy
         self.active_app_id = active_id if busy else None
         self.busy_label = label
+        self.cancel_install_btn.setVisible(busy)
+        self.cancel_install_btn.setEnabled(busy)
+        self.cancel_install_btn.setText("Cancel installation")
         for app_id, card in self.cards.items():
             card.set_busy(busy, active=app_id == self.active_app_id, label=label)
+
+    def cancel_installation(self):
+        if self.install_worker and self.install_worker.isRunning():
+            self.install_worker.cancel()
+            self.cancel_install_btn.setEnabled(False)
+            self.cancel_install_btn.setText("Cancelling...")
+            self.log(
+                "[!] Cancellation requested. Changes already completed will not be rolled back.",
+                self.palette["console_warn"],
+            )
 
     def handle_install(self, app_data, dry_run=False):
         if self.install_worker and self.install_worker.isRunning():
@@ -505,6 +539,13 @@ class MainWindow(QMainWindow):
         self.set_all_busy(False)
         card = self.cards.get(app_data["id"])
 
+        if result["status"] == "cancelled":
+            self.log(f"[!] {result['message']}", self.palette["console_warn"])
+            self.start_status_check([app_data])
+            if card:
+                card.mark_installed(app_data["id"] in self.installed_state)
+            return
+
         if result["status"] == "success" and result.get("dry_run"):
             self.log(
                 f"[i] {app_data['name']}: preview finished, nothing was changed.",
@@ -522,6 +563,7 @@ class MainWindow(QMainWindow):
                 card.mark_installed(True)
         else:
             self.log(f"[-] Error: {result['message']}", self.palette["console_err"])
+            self.start_status_check([app_data])
             if card:
                 card.mark_installed(app_data["id"] in self.installed_state)
 

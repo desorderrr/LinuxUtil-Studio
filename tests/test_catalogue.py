@@ -12,6 +12,8 @@ por isso é seguro em Fedora, Debian/Ubuntu e Arch.
 import os
 import subprocess
 import sys
+import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -79,6 +81,31 @@ class CatalogueTests(unittest.TestCase):
                 head = handle.read(200)
             self.assertIn(b"<svg", head, path)
 
+    def test_invalid_catalogue_shape_is_rejected(self):
+        for contents, expected in (
+            ('{"apps": []}', "JSON array"),
+            ('[null]', "JSON object"),
+            ('[{"id": "test"}]', "'name'"),
+            (
+                '[{"id": "test", "name": "Test", "description": "Test", '
+                '"package_name": "test", "package_type": "unknown"}]',
+                "unsupported 'package_type'",
+            ),
+            (
+                '[{"id": "test", "name": "Test", "description": "Test", '
+                '"package_name": "test"}, {"id": "test", "name": "Again", '
+                '"description": "Test", "package_name": "again"}]',
+                "duplicate id",
+            ),
+        ):
+            with self.subTest(contents=contents), tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8"
+            ) as handle:
+                handle.write(contents)
+                handle.flush()
+                with self.assertRaisesRegex(ValueError, expected):
+                    load_catalogue(handle.name)
+
 
 class BrandingTests(unittest.TestCase):
     def test_project_logo_is_svg(self):
@@ -121,6 +148,37 @@ class ResolutionTests(unittest.TestCase):
                 self.assertIsInstance(cmd, list, app["id"])
                 self.assertTrue(all(isinstance(part, str) for part in cmd), app["id"])
 
+    def test_os_release_parses_openSUSE_and_id_like(self):
+        parsed = SystemInfo._parse_os_release(
+            'ID=opensuse-tumbleweed\n'
+            'ID_LIKE="suse opensuse"\n'
+            'PRETTY_NAME="openSUSE Tumbleweed"\n'
+        )
+        self.assertEqual(parsed["ID"], "opensuse-tumbleweed")
+        self.assertEqual(parsed["PRETTY_NAME"], "openSUSE Tumbleweed")
+
+        info = SystemInfo.__new__(SystemInfo)
+        info.distro = parsed["ID"]
+        info.distro_like = parsed["ID_LIKE"].split()
+        self.assertEqual(info._get_package_manager(), "zypper")
+
+    def test_distro_is_read_from_os_release(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.is_flatpak = False
+        info.distro_like = []
+        with mock.patch(
+            "builtins.open",
+            mock.mock_open(read_data='ID="opensuse-leap"\nID_LIKE="suse"\n'),
+        ):
+            self.assertEqual(info._get_distro(), "opensuse-leap")
+        self.assertEqual(info.distro_like, ["suse"])
+
+    def test_id_like_selects_compatible_package_manager(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.distro = "custom-linux"
+        info.distro_like = ["debian"]
+        self.assertEqual(info._get_package_manager(), "apt")
+
 
 class DryRunTests(unittest.TestCase):
     """``--dry-run`` nunca pode executar comandos nativos."""
@@ -142,6 +200,37 @@ class DryRunTests(unittest.TestCase):
         self.assertEqual(result["status"], "success")
         self.assertTrue(result.get("dry_run"))
         self.assertIn("$ true", result["output"])
+
+    def test_install_command_failure_is_reported(self):
+        installer = Installer()
+        app = {"id": "test", "name": "Test", "package_type": "native"}
+        with mock.patch.object(
+            installer.sys_info,
+            "get_install_commands",
+            return_value=[[sys.executable, "-c", "raise SystemExit(4)"]],
+        ):
+            result = installer.run_install(app)
+
+        self.assertEqual(result["status"], "error")
+        self.assertIn("exit 4", result["message"])
+
+    def test_running_install_can_be_cancelled(self):
+        installer = Installer()
+        app = {"id": "test", "name": "Test", "package_type": "native"}
+        cancel_event = threading.Event()
+        timer = threading.Timer(0.2, cancel_event.set)
+        timer.daemon = True
+        with mock.patch.object(
+            installer.sys_info,
+            "get_install_commands",
+            return_value=[[sys.executable, "-c", "import time; time.sleep(30)"]],
+        ):
+            timer.start()
+            result = installer.run_install(app, cancel_event=cancel_event)
+            timer.join()
+
+        self.assertEqual(result["status"], "cancelled")
+        self.assertIn("not rolled back", result["message"])
 
 
 class ScriptTests(unittest.TestCase):

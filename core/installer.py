@@ -1,4 +1,7 @@
+import os
+import signal
 import subprocess
+import threading
 from core.system_info import SystemInfo
 
 
@@ -19,7 +22,7 @@ class Installer:
                 timeout=timeout,
             )
             return result.returncode == 0
-        except Exception:
+        except FileNotFoundError:
             return False
 
     def is_installed(self, app):
@@ -32,14 +35,13 @@ class Installer:
             checks = app.get("check") or []
             if not checks:
                 return False
-            return all(
-                self._command_ok(
-                    self.sys_info.get_check_command(
-                        {"package_name": name, "package_type": "native"}
-                    )
+            for name in checks:
+                cmd = self.sys_info.get_check_command(
+                    {"package_name": name, "package_type": "native"}
                 )
-                for name in checks
-            )
+                if not cmd or not self._command_ok(self.sys_info.host_wrap(cmd)):
+                    return False
+            return True
 
         cmd = self.sys_info.get_check_command(app)
         if not cmd:
@@ -79,12 +81,13 @@ class Installer:
             return f"No supported package manager found for {name}."
         return f"No suitable installer found for {name} on this system."
 
-    def run_install(self, app, on_output=None, dry_run=False):
+    def run_install(self, app, on_output=None, dry_run=False, cancel_event=None):
         """
         Executa a instalação (ou a pré-visualização, quando ``dry_run``).
 
         on_output: callable(str) opcional, chamado a cada linha de log
                    (usado pela GUI para streaming em tempo real).
+        cancel_event: threading.Event opcional para cancelar o comando ativo.
         """
         commands = self.sys_info.get_install_commands(app, dry_run=dry_run)
         if not commands:
@@ -100,10 +103,14 @@ class Installer:
         def emit(line):
             full_output.append(line)
             if on_output:
-                try:
-                    on_output(line)
-                except Exception:
-                    pass
+                on_output(line)
+
+        def cancellation_result():
+            return {
+                "status": "cancelled",
+                "message": f"Installation of {name} was cancelled. Completed changes were not rolled back.",
+                "output": full_output,
+            }
 
         # Para pacotes nativos/flatpak/snap o dry-run é puramente informativo:
         # mostramos os comandos mas não executamos nada. Os packs (scripts)
@@ -119,6 +126,9 @@ class Installer:
             }
 
         for raw_cmd in commands:
+            if cancel_event and cancel_event.is_set():
+                return cancellation_result()
+
             cmd = (
                 raw_cmd
                 if app.get("package_type") == "script"
@@ -132,10 +142,54 @@ class Installer:
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
+                    start_new_session=True,
                 )
-                for line in process.stdout:
-                    emit(line.rstrip())
-                process.wait()
+
+                command_finished = threading.Event()
+
+                def stop_process_group():
+                    try:
+                        os.killpg(process.pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        return
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    if process.poll() is None:
+                        process.wait()
+
+                def stop_process_on_cancel():
+                    while process.poll() is None and not command_finished.wait(0.1):
+                        if cancel_event and cancel_event.is_set():
+                            stop_process_group()
+                            return
+
+                cancel_watcher = None
+                if cancel_event:
+                    cancel_watcher = threading.Thread(
+                        target=stop_process_on_cancel, daemon=True
+                    )
+                    cancel_watcher.start()
+
+                try:
+                    with process.stdout:
+                        for line in process.stdout:
+                            emit(line.rstrip())
+                    process.wait()
+                finally:
+                    if process.poll() is None:
+                        stop_process_group()
+                    command_finished.set()
+                    if cancel_watcher:
+                        cancel_watcher.join(timeout=1)
+
+                if cancel_event and cancel_event.is_set():
+                    return cancellation_result()
 
                 if process.returncode != 0:
                     return {

@@ -1,6 +1,7 @@
 import sys
 import os
 import argparse
+import subprocess
 
 # Componentes da UI (opcionais: o app funciona em modo CLI sem PySide6)
 try:
@@ -43,8 +44,16 @@ def list_apps():
             target = app["package_name"]
         else:
             target = info.resolve_package(app) or "-"
-        installed = installer.is_installed(app)
-        status = "installed" if installed else "-"
+        try:
+            installed = installer.is_installed(app)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(
+                f"Warning: could not check installation state for {app['id']}: {error}",
+                file=sys.stderr,
+            )
+            status = "unknown"
+        else:
+            status = "installed" if installed else "-"
         print(f"{app['id']:<14} {ptype:<9} {target:<34} {status:<10} {app['name']} ({app['category']})")
     return catalogue
 

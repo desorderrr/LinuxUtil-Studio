@@ -12,9 +12,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
   never initialised.
 - `--dry-run` now prints native/Flatpak/Snap commands without executing them
   (previously only setup scripts honoured the flag).
+- Distribution detection reads `/etc/os-release` and recognizes compatible
+  distributions through `ID_LIKE`, including openSUSE.
+- Invalid catalogue shapes now fail with an explicit entry and field error.
+- Installation-state checks report timeouts instead of silently showing an app
+  as not installed.
 
 ### Changed
 
+- Running installations can be cancelled; already completed system changes
+  are not rolled back.
 - `install.sh` validates `rsync` and `python3-venv`, moves a previous install
   to a timestamped backup instead of deleting it, and no longer fails when
   `chmod` cannot touch the venv interpreter.
@@ -26,6 +33,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Flatpak sandbox detection: package operations are delegated to the host via
   `flatpak-spawn --host`.
 - Test covering the `--dry-run` guarantee.
+- Tests covering distro aliases, invalid catalogue data, command failures and
+  installation cancellation.
 
 ## [1.0.0] - 2026-11-01
 
