@@ -28,6 +28,15 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Remove action for detected native, Flatpak and Snap apps; setup scripts are
+  deliberately excluded and package data/dependencies are not explicitly purged.
+- Added confirmed, previewable official vendor-repository installs for VS Code
+  and Brave on Debian, Fedora and openSUSE, with Flatpak fallbacks and
+  ownership-aware source removal.
+- Documented the catalogue's package-source policy and VS Code's official
+  distro packages versus its checksummed Flathub build.
+- Audited upstream installation channels and recorded the strongest
+  distro-specific alternatives without silently adding vendor repositories.
 - `flatpak/build.sh` downloads the PySide6 wheels and builds the bundle from a
   clean clone.
 - Flatpak sandbox detection: package operations are delegated to the host via

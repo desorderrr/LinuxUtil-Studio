@@ -28,7 +28,7 @@ CATEGORIES = {
     "Internet", "Communication", "Development", "Gaming", "Media",
     "Graphics", "Productivity", "System", "Utilities",
 }
-PACKAGE_TYPES = {"native", "flatpak", "snap", "script"}
+PACKAGE_TYPES = {"native", "flatpak", "snap", "script", "vendor"}
 FAMILIES = {"debian", "fedora", "arch", "suse"}
 REQUIRED_FIELDS = ("id", "name", "description", "category", "package_name", "package_type")
 
@@ -60,6 +60,12 @@ class CatalogueTests(unittest.TestCase):
         for app in self.apps:
             for family in app.get("packages") or {}:
                 self.assertIn(family, FAMILIES, app["id"])
+
+    def test_vendor_entries_have_flatpak_fallbacks(self):
+        for app in self.apps:
+            if app["package_type"] == "vendor":
+                self.assertEqual(app.get("fallback_type"), "flatpak", app["id"])
+                self.assertTrue(app.get("fallback_package_name"), app["id"])
 
     def test_scripts_exist_and_are_declared(self):
         for app in self.apps:
@@ -179,6 +185,67 @@ class ResolutionTests(unittest.TestCase):
         info.distro_like = ["debian"]
         self.assertEqual(info._get_package_manager(), "apt")
 
+    def test_native_remove_commands_keep_package_manager_dependencies(self):
+        expected = {
+            "apt": ["sudo", "apt-get", "remove", "-y", "sample"],
+            "dnf": ["sudo", "dnf", "remove", "-y", "sample"],
+            "pacman": ["sudo", "pacman", "-R", "--noconfirm", "sample"],
+            "zypper": ["sudo", "zypper", "remove", "-y", "sample"],
+        }
+        app = {"package_type": "native", "package_name": "sample"}
+        for manager, command in expected.items():
+            with self.subTest(manager=manager):
+                info = SystemInfo.__new__(SystemInfo)
+                info.package_manager = manager
+                info._privilege_tool = "sudo"
+                self.assertEqual(info.get_remove_commands(app), [command])
+
+    def test_flatpak_remove_preserves_app_data_by_default(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.has_flatpak = True
+        info.is_flatpak = False
+        command = info.get_remove_commands({
+            "package_type": "flatpak",
+            "package_name": "org.example.App",
+        })
+        self.assertEqual(
+            command,
+            [["flatpak", "uninstall", "--noninteractive", "-y", "org.example.App"]],
+        )
+        self.assertNotIn("--delete-data", command[0])
+
+    def test_scripts_have_no_automatic_remove_command(self):
+        info = SystemInfo.__new__(SystemInfo)
+        self.assertEqual(
+            info.get_remove_commands({"package_type": "script"}), []
+        )
+
+    def test_vendor_apps_use_native_repositories_with_flatpak_fallback(self):
+        app = next(item for item in load_catalogue() if item["id"] == "vscode")
+        for manager in ("apt", "dnf", "zypper"):
+            with self.subTest(manager=manager):
+                info = SystemInfo.__new__(SystemInfo)
+                info.package_manager = manager
+                info.is_flatpak = False
+                info.has_flatpak = True
+                info._privilege_tool = "pkexec"
+                self.assertEqual(info.resolve_package_type(app), "vendor")
+                command = info.get_install_commands(app)
+                self.assertEqual(command[0][0], "pkexec")
+                self.assertEqual(command[0][-2:], ["vscode", "install"])
+                self.assertEqual(info.get_check_command(app)[-1], "code")
+                self.assertEqual(info.get_remove_commands(app)[0][-2:], ["vscode", "remove"])
+
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "pacman"
+        info.is_flatpak = False
+        info.has_flatpak = True
+        self.assertEqual(info.resolve_package_type(app), "flatpak")
+        self.assertEqual(
+            info.get_install_commands(app),
+            [["flatpak", "install", "-y", "flathub", "com.visualstudio.code"]],
+        )
+
 
 class DryRunTests(unittest.TestCase):
     """``--dry-run`` nunca pode executar comandos nativos."""
@@ -232,6 +299,26 @@ class DryRunTests(unittest.TestCase):
         self.assertEqual(result["status"], "cancelled")
         self.assertIn("not rolled back", result["message"])
 
+    def test_remove_runs_command_and_reports_success(self):
+        installer = Installer()
+        app = {"id": "test", "name": "Test", "package_type": "native"}
+        with mock.patch.object(
+            installer.sys_info,
+            "get_remove_commands",
+            return_value=[[sys.executable, "-c", "print('removed')"]],
+        ):
+            result = installer.run_remove(app)
+
+        self.assertEqual(result["status"], "success")
+        self.assertIn("removed", result["output"])
+
+    def test_remove_refuses_setup_scripts(self):
+        result = Installer().run_remove(
+            {"id": "gaming-pack", "name": "Gaming Pack", "package_type": "script"}
+        )
+        self.assertEqual(result["status"], "error")
+        self.assertIn("cannot be removed automatically", result["message"])
+
 
 class ScriptTests(unittest.TestCase):
     def test_host_script_dry_run_changes_nothing(self):
@@ -252,6 +339,20 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("nothing was changed", result.stdout)
         self.assertIn("[dry-run]", result.stdout)
+
+    def test_vendor_repository_scripts_support_dry_run(self):
+        script = os.path.join(ROOT, "scripts", "vendor_apps.sh")
+        for app_id in ("vscode", "brave"):
+            with self.subTest(app=app_id):
+                result = subprocess.run(
+                    ["bash", script, app_id, "install", "--dry-run"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("[dry-run]", result.stdout)
+                self.assertIn("nothing", result.stdout.lower())
 
 
 if __name__ == "__main__":

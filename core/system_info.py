@@ -15,6 +15,11 @@ FAMILY_BY_MANAGER = {
     "zypper": "suse",
 }
 
+VENDOR_APP_FAMILIES = {
+    "vscode": {"debian", "fedora", "suse"},
+    "brave": {"debian", "fedora", "suse"},
+}
+
 
 class SystemInfo:
     def __init__(self):
@@ -209,6 +214,30 @@ class SystemInfo:
             return packages[family]
         return app.get("package_name")
 
+    def resolve_package_type(self, app):
+        package_type = app.get("package_type", "native")
+        if package_type != "vendor":
+            return package_type
+        machine = platform.machine().lower()
+        supported_arches = {"x86_64", "amd64", "aarch64", "arm64"}
+        if (
+            not self.is_flatpak
+            and self.family in VENDOR_APP_FAMILIES.get(app["id"], set())
+            and machine in supported_arches
+        ):
+            return "vendor"
+        return app.get("fallback_type")
+
+    def resolve_package_name(self, app):
+        if (
+            app.get("package_type") == "vendor"
+            and self.resolve_package_type(app) == app.get("fallback_type")
+        ):
+            return app.get("fallback_package_name")
+        if app.get("package_type") in {"flatpak", "snap"}:
+            return app.get("package_name")
+        return self.resolve_package(app)
+
     def resolve_script(self, app):
         """Caminho do script de uma entrada ``package_type: script``."""
         scripts = app.get("scripts") or {}
@@ -225,10 +254,12 @@ class SystemInfo:
     def get_install_commands(self, app, dry_run=False):
         """Lista de comandos (argv) a executar em sequência.
 
-        ``dry_run`` só é suportado pelas entradas do tipo script: corre o script
-        em modo de simulação, sem privilégios e sem alterar o sistema.
+        ``dry_run`` corre scripts e instaladores vendor em modo de simulação,
+        sem privilégios ou alterações; para pacotes mostra os comandos.
         """
-        package_type = app.get("package_type", "native")
+        package_type = self.resolve_package_type(app)
+        if package_type is None:
+            return []
 
         if package_type == "script":
             path = self.resolve_script(app)
@@ -238,18 +269,29 @@ class SystemInfo:
                 return [["bash", path, "--dry-run"]]
             return [[self.privilege_tool, "bash", path]]
 
+        if package_type == "vendor":
+            path = os.path.join(SCRIPTS_DIR, "vendor_apps.sh")
+            if not os.path.isfile(path):
+                return []
+            if dry_run:
+                return [["bash", path, app["id"], "install", "--dry-run"]]
+            return [[self.privilege_tool, "bash", path, app["id"], "install"]]
+
         if package_type == "flatpak":
             # O flatpak pede autorização sozinho (polkit) para instalações de sistema.
             if not self.has_flatpak:
                 return []
-            return [["flatpak", "install", "-y", "flathub", app["package_name"]]]
+            return [[
+                "flatpak", "install", "-y", "flathub",
+                self.resolve_package_name(app),
+            ]]
 
         if package_type == "snap":
             if not self.has_snap:
                 return []
             return [[self.privilege_tool, "snap", "install", app["package_name"]]]
 
-        package_name = self.resolve_package(app)
+        package_name = self.resolve_package_name(app)
         pm = self.package_manager
         priv = self.privilege_tool
         if pm == "apt":
@@ -265,6 +307,43 @@ class SystemInfo:
             return [[priv, "zypper", "install", "-y", package_name]]
         return []
 
+    def get_remove_commands(self, app):
+        """Lista comandos para remover apenas a aplicação, sem dependências órfãs."""
+        package_type = self.resolve_package_type(app)
+        if package_type in {None, "script"}:
+            return []
+        if package_type == "vendor":
+            path = os.path.join(SCRIPTS_DIR, "vendor_apps.sh")
+            if not os.path.isfile(path):
+                return []
+            return [[self.privilege_tool, "bash", path, app["id"], "remove"]]
+        if package_type == "flatpak":
+            if not self.has_flatpak:
+                return []
+            return [[
+                "flatpak", "uninstall", "--noninteractive", "-y",
+                self.resolve_package_name(app),
+            ]]
+        if package_type == "snap":
+            if not self.has_snap:
+                return []
+            return [[self.privilege_tool, "snap", "remove", app["package_name"]]]
+
+        package_name = self.resolve_package_name(app)
+        if not package_name:
+            return []
+        pm = self.package_manager
+        priv = self.privilege_tool
+        if pm == "apt":
+            return [[priv, "apt-get", "remove", "-y", package_name]]
+        if pm == "dnf":
+            return [[priv, "dnf", "remove", "-y", package_name]]
+        if pm == "pacman":
+            return [[priv, "pacman", "-R", "--noconfirm", package_name]]
+        if pm == "zypper":
+            return [[priv, "zypper", "remove", "-y", package_name]]
+        return []
+
     def get_install_command(self, app, dry_run=False):
         """Compatibilidade: retorna os comandos como string legível."""
         commands = self.get_install_commands(app, dry_run=dry_run)
@@ -274,13 +353,15 @@ class SystemInfo:
 
     def get_check_command(self, app):
         """Comando usado para saber se o pacote já está instalado."""
-        package_type = app.get("package_type", "native")
+        package_type = self.resolve_package_type(app)
+        if package_type is None:
+            return None
         if package_type == "flatpak":
-            return ["flatpak", "info", app["package_name"]]
+            return ["flatpak", "info", self.resolve_package_name(app)]
         if package_type == "snap":
             return ["snap", "list", app["package_name"]]
 
-        package_name = self.resolve_package(app)
+        package_name = self.resolve_package_name(app)
         if not package_name:
             return None
         pm = self.package_manager

@@ -2,7 +2,7 @@ import json
 import os
 
 CATALOGUE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "catalogue.json")
-PACKAGE_TYPES = {"native", "flatpak", "snap", "script"}
+PACKAGE_TYPES = {"native", "flatpak", "snap", "script", "vendor"}
 
 DEFAULT_CATALOGUE = [
     {"id": "git", "name": "Git", "description": "Distributed version control.",
@@ -55,4 +55,15 @@ def load_catalogue(path=None):
             raise ValueError(
                 f"Catalogue entry {index} has an unsupported 'package_type': {path}"
             )
+        if app["package_type"] == "vendor":
+            if app.get("fallback_type") != "flatpak":
+                raise ValueError(
+                    f"Catalogue entry {index} needs a supported 'fallback_type': {path}"
+                )
+            fallback_name = app.get("fallback_package_name")
+            if not isinstance(fallback_name, str) or not fallback_name.strip():
+                raise ValueError(
+                    f"Catalogue entry {index} has a missing or invalid "
+                    f"'fallback_package_name': {path}"
+                )
     return data

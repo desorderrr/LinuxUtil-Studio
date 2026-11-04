@@ -25,10 +25,11 @@ class InstallWorker(QThread):
     line = Signal(str)
     done = Signal(dict)
 
-    def __init__(self, app_data, dry_run=False):
+    def __init__(self, app_data, dry_run=False, operation="install"):
         super().__init__()
         self.app_data = app_data
         self.dry_run = dry_run
+        self.operation = operation
         self.cancel_event = threading.Event()
 
     def cancel(self):
@@ -36,12 +37,19 @@ class InstallWorker(QThread):
 
     def run(self):
         installer = Installer()
-        result = installer.run_install(
-            self.app_data,
-            on_output=self.line.emit,
-            dry_run=self.dry_run,
-            cancel_event=self.cancel_event,
-        )
+        if self.operation == "remove":
+            result = installer.run_remove(
+                self.app_data,
+                on_output=self.line.emit,
+                cancel_event=self.cancel_event,
+            )
+        else:
+            result = installer.run_install(
+                self.app_data,
+                on_output=self.line.emit,
+                dry_run=self.dry_run,
+                cancel_event=self.cancel_event,
+            )
         self.done.emit(result)
 
 
@@ -71,7 +79,10 @@ class StatusWorker(QThread):
 class AppCard(QFrame):
     """Widget para representar um aplicativo individual."""
 
-    def __init__(self, app_data, install_callback, palette, theme_name):
+    def __init__(
+        self, app_data, install_callback, remove_callback, palette, theme_name,
+        resolved_package_type=None,
+    ):
         super().__init__()
         self.app_data = app_data
         self.palette = palette
@@ -109,12 +120,16 @@ class AppCard(QFrame):
         name_row.addWidget(self.name_label)
 
         ptype = app_data.get("package_type", "native")
+        display_type = resolved_package_type or ptype
         self.is_script = ptype == "script"
-        self.badge = QLabel("SCRIPT" if self.is_script else ptype.upper())
+        self.is_vendor = ptype == "vendor" and display_type == "vendor"
+        self.badge = QLabel(
+            "SCRIPT" if self.is_script else "VENDOR" if self.is_vendor else display_type.upper()
+        )
         self.badge.setStyleSheet(
             "background-color: {}; color: white; border-radius: 4px;"
             " padding: 1px 6px; font-size: 9px; font-weight: 700;".format(
-                theme_mod.badge_color(theme_name, ptype))
+                theme_mod.badge_color(theme_name, display_type))
         )
         name_row.addWidget(self.badge, alignment=Qt.AlignVCenter)
 
@@ -141,12 +156,21 @@ class AppCard(QFrame):
 
         self.install_btn.clicked.connect(lambda: install_callback(self.app_data))
 
+        self.remove_btn = None
+        if not self.is_script:
+            self.remove_btn = QPushButton("Remove")
+            self.remove_btn.setFixedSize(78, 32)
+            self.remove_btn.setCursor(Qt.PointingHandCursor)
+            self.remove_btn.setVisible(False)
+            self._style_remove_button(self.remove_btn)
+            self.remove_btn.clicked.connect(lambda: remove_callback(self.app_data))
+
         self.preview_btn = None
-        if self.is_script:
+        if self.is_script or self.is_vendor:
             self.preview_btn = QPushButton("Preview")
             self.preview_btn.setFixedSize(78, 32)
             self.preview_btn.setCursor(Qt.PointingHandCursor)
-            self.preview_btn.setToolTip("Show every command without changing the system")
+            self.preview_btn.setToolTip("Show planned commands without changing the system")
             self._style_secondary(self.preview_btn)
             self.preview_btn.clicked.connect(
                 lambda: install_callback(self.app_data, True))
@@ -154,6 +178,8 @@ class AppCard(QFrame):
         layout.addLayout(text_layout, stretch=1)
         if self.preview_btn is not None:
             layout.addWidget(self.preview_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
+        if self.remove_btn is not None:
+            layout.addWidget(self.remove_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self.install_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
 
     def _style_button(self, p):
@@ -174,8 +200,21 @@ class AppCard(QFrame):
             "QPushButton:disabled {{ color: {border}; }}".format(**p)
         )
 
+    def _style_remove_button(self, button):
+        p = self.palette
+        button.setStyleSheet(
+            "QPushButton {{ background-color: transparent; color: {danger};"
+            " border: 1px solid {danger}; border-radius: 6px;"
+            " font-weight: 600; font-size: 12px; }}"
+            "QPushButton:hover {{ background-color: {danger}; color: #ffffff; }}"
+            "QPushButton:disabled {{ color: {text_muted}; border-color: {border}; }}"
+            .format(**p)
+        )
+
     # -- estado ---------------------------------------------------------
     def mark_installed(self, installed):
+        if self.remove_btn is not None:
+            self.remove_btn.setVisible(installed)
         if installed:
             self.status_label.setText("● Installed")
             self.install_btn.setText("Rerun" if self.is_script else "Reinstall")
@@ -187,6 +226,8 @@ class AppCard(QFrame):
         self.install_btn.setEnabled(not busy)
         if self.preview_btn is not None:
             self.preview_btn.setEnabled(not busy)
+        if self.remove_btn is not None:
+            self.remove_btn.setEnabled(not busy)
 
         if busy and active:
             self.status_label.setText(f"● {label}")
@@ -393,7 +434,10 @@ class MainWindow(QMainWindow):
             return
 
         for app in apps:
-            card = AppCard(app, self.handle_install, self.palette, self.theme_name)
+            card = AppCard(
+                app, self.handle_install, self.handle_remove, self.palette, self.theme_name,
+                self.installer.sys_info.resolve_package_type(app),
+            )
             # Preserva o estado conhecido ao filtrar ou trocar de tema.
             card.mark_installed(app["id"] in self.installed_state)
             card.set_busy(
@@ -478,10 +522,13 @@ class MainWindow(QMainWindow):
             self.log("[!] An installation is already running.", self.palette["console_warn"])
             return
 
-        ptype = app_data.get("package_type", "native")
+        ptype = self.installer.sys_info.resolve_package_type(app_data)
 
-        if ptype == "script" and not dry_run and not self._confirm_script(app_data):
-            return
+        if not dry_run:
+            if ptype == "script" and not self._confirm_script(app_data):
+                return
+            if ptype == "vendor" and not self._confirm_vendor(app_data):
+                return
 
         self.console.clear()
         self.console.setVisible(True)
@@ -496,7 +543,7 @@ class MainWindow(QMainWindow):
                 f"[i] Preview of {app_data['name']} (nothing will be installed)...",
                 self.palette["console_cmd"],
             )
-        elif ptype == "script":
+        elif ptype in {"script", "vendor"}:
             self.log(
                 f"[*] Running {app_data['name']} setup...",
                 self.palette["console_cmd"],
@@ -512,6 +559,62 @@ class MainWindow(QMainWindow):
         self.install_worker.done.connect(
             lambda result: self.on_install_done(app_data, result))
         self.install_worker.start()
+
+    def handle_remove(self, app_data):
+        if self.install_worker and self.install_worker.isRunning():
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Remove application?",
+            "<b>{}</b> will be removed using <b>{}</b>.<br><br>"
+            "The app will not request deletion of user data or automatically "
+            "remove unused dependencies. Continue?".format(
+                html.escape(app_data["name"]),
+                html.escape(
+                    self.installer.sys_info.resolve_package_type(app_data).upper()
+                ),
+            ),
+            QMessageBox.Cancel | QMessageBox.Ok,
+            QMessageBox.Cancel,
+        )
+        if answer != QMessageBox.Ok:
+            return
+
+        self.console.clear()
+        self.console.setVisible(True)
+        self.set_all_busy(True, app_data["id"], "Removing...")
+        self.log(
+            f"[*] Removing {app_data['name']}...",
+            self.palette["console_warn"],
+        )
+        self.install_worker = InstallWorker(app_data, operation="remove")
+        self.install_worker.line.connect(lambda line: self.log(line))
+        self.install_worker.done.connect(
+            lambda result: self.on_remove_done(app_data, result)
+        )
+        self.install_worker.start()
+
+    def on_remove_done(self, app_data, result):
+        self.set_all_busy(False)
+        card = self.cards.get(app_data["id"])
+        if result["status"] == "success":
+            self.installed_state.discard(app_data["id"])
+            self._update_summary()
+            self.log(
+                f"[+] Removed: {app_data['name']}. User data was not explicitly deleted.",
+                self.palette["console_ok"],
+            )
+            if card:
+                card.mark_installed(False)
+        elif result["status"] == "cancelled":
+            self.log(f"[!] {result['message']}", self.palette["console_warn"])
+            self.start_status_check([app_data])
+        else:
+            self.log(f"[-] Error: {result['message']}", self.palette["console_err"])
+            self.start_status_check([app_data])
+        if card and result["status"] != "success":
+            card.mark_installed(app_data["id"] in self.installed_state)
 
     def _confirm_script(self, app_data):
         """Pede confirmação antes de correr um script que mexe no sistema."""
@@ -530,6 +633,29 @@ class MainWindow(QMainWindow):
             "ask for your password.<br><br>Script: <code>{}</code><br><br>"
             "Use <b>Preview</b> to see every command first.<br>Continue?".format(
                 html.escape(app_data["name"]), manager, os.path.basename(script)),
+            QMessageBox.Cancel | QMessageBox.Ok,
+            QMessageBox.Cancel,
+        )
+        return answer == QMessageBox.Ok
+
+    def _confirm_vendor(self, app_data):
+        manager = self.installer.sys_info.package_manager or "the system package manager"
+        family = self.installer.sys_info.family or "your distribution"
+        vendor = "Microsoft" if app_data["id"] == "vscode" else "Brave Software"
+        answer = QMessageBox.question(
+            self,
+            "Add vendor repository?",
+            "<b>{}</b> will add the official {} package repository for <b>{}</b>, "
+            "verify its signing key, and install with <b>{}</b>.<br><br>"
+            "Remove will uninstall the package and remove only repository/key "
+            "files created by LinuxUtil Studio. Existing repository files are "
+            "left untouched.<br><br>Use <b>Preview</b> to inspect the planned "
+            "steps first. Continue?".format(
+                html.escape(app_data["name"]),
+                html.escape(vendor),
+                html.escape(family),
+                html.escape(manager),
+            ),
             QMessageBox.Cancel | QMessageBox.Ok,
             QMessageBox.Cancel,
         )

@@ -35,15 +35,17 @@ def list_apps():
     print(f"{'ID':<14} {'TYPE':<9} {'TARGET':<34} {'STATUS':<10} NAME")
     print("-" * 100)
     for app in catalogue:
-        ptype = app.get("package_type", "native")
-        if ptype == "script":
+        ptype = info.resolve_package_type(app)
+        if ptype is None:
+            target = "-"
+        elif ptype == "script":
             target = os.path.basename(info.resolve_script(app) or "-")
         elif ptype == "flatpak":
-            target = app["package_name"]
+            target = info.resolve_package_name(app)
         elif ptype == "snap":
-            target = app["package_name"]
+            target = info.resolve_package_name(app)
         else:
-            target = info.resolve_package(app) or "-"
+            target = info.resolve_package_name(app) or "-"
         try:
             installed = installer.is_installed(app)
         except (OSError, subprocess.TimeoutExpired) as error:
@@ -66,8 +68,13 @@ def install(app_id, dry_run=False):
         return 1
 
     installer = Installer()
-    ptype = target.get("package_type", "native")
-    if ptype == "script" and not dry_run:
+    ptype = installer.sys_info.resolve_package_type(target)
+    if ptype == "vendor" and not dry_run:
+        print(
+            f"Installing {target['name']} from its official vendor repository "
+            "(asks for your password)...\n"
+        )
+    elif ptype == "script" and not dry_run:
         print(f"Running setup script for {target['name']} (asks for your password)...\n")
     elif dry_run:
         print(f"Preview for {target['name']} (nothing will be installed)...\n")
@@ -78,6 +85,30 @@ def install(app_id, dry_run=False):
         target,
         on_output=lambda line: print(line, flush=True),
         dry_run=dry_run,
+    )
+    print(f"\nResult: {result['status']} - {result['message']}")
+    return 0 if result["status"] == "success" else 1
+
+
+def remove(app_id):
+    catalogue = load_catalogue()
+    target = next((a for a in catalogue if a["id"] == app_id), None)
+    if not target:
+        print(f"App '{app_id}' not found in the catalogue.")
+        return 1
+
+    installer = Installer()
+    if target.get("package_type") == "script":
+        print("Setup scripts and gaming packs cannot be removed automatically.")
+        return 1
+    if not installer.is_installed(target):
+        print(f"{target['name']} is not detected as installed.")
+        return 1
+
+    print(f"Removing {target['name']}...\n")
+    result = installer.run_remove(
+        target,
+        on_output=lambda line: print(line, flush=True),
     )
     print(f"\nResult: {result['status']} - {result['message']}")
     return 0 if result["status"] == "success" else 1
@@ -122,6 +153,7 @@ def main():
     parser.add_argument("--list", action="store_true", help="list catalogue apps and exit")
     parser.add_argument("--info", action="store_true", help="show detected system info and exit")
     parser.add_argument("--install", metavar="ID", help="install an app by catalogue ID and exit")
+    parser.add_argument("--remove", metavar="ID", help="remove an app by catalogue ID and exit")
     parser.add_argument("--dry-run", action="store_true",
                         help="with --install/--cli: preview setup scripts without changing anything")
     args = parser.parse_args()
@@ -134,6 +166,8 @@ def main():
         return 0
     if args.install:
         return install(args.install, dry_run=args.dry_run)
+    if args.remove:
+        return remove(args.remove)
     if args.cli or not GUI_AVAILABLE:
         if not GUI_AVAILABLE and not args.cli:
             print("PySide6 not found - falling back to CLI mode.\n")

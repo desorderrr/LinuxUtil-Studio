@@ -108,6 +108,40 @@ exact command that is running and every line it prints.
 - **Steam via Flatpak on purpose**, so the scripts never touch RPM Fusion,
   i386 multiarch or `[multilib]`.
 
+### Choosing installation sources
+
+The catalogue uses distribution packages for tools available in supported
+repositories and Flatpak for many desktop applications to keep installation
+and updates consistent without silently adding third-party system repositories.
+Some vendors provide other official channels; those are not automatically
+interchangeable with a tarball or a distro package.
+
+The current 55-entry catalogue has 23 distro-native packages, 29 Flatpaks,
+two official-vendor repository installers and one setup script.
+
+Notable source-review findings:
+
+| App | Upstream option | Assessment |
+| :--- | :--- | :--- |
+| Brave | Vendor-signed repositories for Debian, Fedora and openSUSE; AUR on Arch | Uses the vendor's native package where officially supported. Brave warns that its Flatpak has Chromium sandbox differences; Arch and unsupported systems retain the Flatpak fallback. |
+| Visual Studio Code | Official Microsoft `.deb`/RPM repositories and Snap; community AUR on Arch | Uses Microsoft's signed distro repository on Debian/Fedora/openSUSE. A downloaded archive is not managed by the package manager; Arch and unsupported systems retain the Flathub fallback. |
+| Obsidian | Official AppImage, Snap and `.deb`; community-maintained Flatpak | The official site labels the Flatpak community-maintained. AppImage avoids adding a repository but needs separate update handling. |
+| Slack | Official RPM download and Snap | A native/vendor route is available, but needs per-distro handling; one Flatpak target remains simpler across the supported families. |
+| DBeaver | Official Debian repository and Flatpak | The upstream download page supports both; Flatpak is not inherently a worse choice here. |
+| Joplin | Official AppImage and install/update script | The script is upstream-recommended but executes downloaded code; it should not be adopted without a reviewable, verified update/install flow. |
+
+Vendor installs require confirmation and a preview is available first. APT
+signing keys are checked against pinned fingerprints; RPM packages are
+signature-checked by the package manager. Removal deletes only repository/key
+files created by LinuxUtil Studio; pre-existing repo files are left untouched.
+Sources: [Brave's Linux install guide](https://brave.com/linux/),
+Microsoft's [VS Code Linux guide](https://code.visualstudio.com/docs/setup/linux),
+the [VS Code Flathub manifest](https://github.com/flathub/com.visualstudio.code/blob/master/com.visualstudio.code.yaml),
+the [Obsidian download page](https://obsidian.md/download),
+[Slack downloads](https://slack.com/downloads/linux),
+[DBeaver downloads](https://dbeaver.io/download/), and
+[Joplin installation guide](https://joplinapp.org/help/install/).
+
 ## Installation
 
 Pick whichever method suits you best. All of them end up launching the same
@@ -212,6 +246,9 @@ password, through the desktop's own polkit dialog.
 
 Use **Cancel installation** to stop the active command if needed. Package
 changes completed before cancellation are not rolled back.
+Installed individual apps also show **Remove**. Removal is confirmed first,
+does not purge Flatpak user data or unused dependencies, and is unavailable for
+the Gaming Pack because its script installs shared system packages.
 
 | Shortcut | Action |
 | :--- | :--- |
@@ -229,6 +266,7 @@ The backend works without a GUI, which is handy over SSH or in scripts:
 python3 main.py --info                            # distro, manager, family, Flatpak/Snap, privilege tool
 python3 main.py --list                            # catalogue + resolved target + installed state
 python3 main.py --install spotify                 # install an app by its catalogue ID
+python3 main.py --remove spotify                  # remove an installed app by catalogue ID
 python3 main.py --install gaming-pack --dry-run   # print what a setup script would do
 python3 main.py --cli                             # interactive mode
 ```
@@ -267,9 +305,11 @@ Apps live in [`catalogue.json`](catalogue.json). Adding one is a single object:
 | `name` | yes | Label shown on the card. |
 | `description` | yes | One line under the name. |
 | `category` | yes | One of the nine categories in the sidebar. |
-| `package_type` | yes | `native`, `flatpak`, `snap` or `script`. |
+| `package_type` | yes | `native`, `flatpak`, `snap`, `script` or `vendor`. |
 | `package_name` | yes | Name used by the underlying manager. |
 | `packages` | no | Per-family override: `debian`, `fedora`, `arch`, `suse`. |
+| `fallback_type` | vendor only | Package type used where a supported vendor repository is unavailable. |
+| `fallback_package_name` | vendor only | Package ID for the fallback type. |
 | `icon` | no | Freedesktop icon name, tried after the bundled logo. |
 | `scripts` | for `script` | Maps a family to a file in `scripts/`. |
 | `check` | for `script` | Packages that prove the pack is already applied. |
@@ -294,7 +334,7 @@ Apps live in [`catalogue.json`](catalogue.json). Adding one is a single object:
 | App | Format | Package / target | What it does |
 | :--- | :---: | :--- | :--- |
 | **Firefox** | Flatpak | `org.mozilla.firefox` | Mozilla's privacy-focused web browser. |
-| **Brave** | Flatpak | `com.brave.Browser` | Chromium browser with built-in ad and tracker blocking. |
+| **Brave** | Vendor / Flatpak fallback | `brave-browser` / `com.brave.Browser` | Chromium browser with built-in ad and tracker blocking. |
 | **Vivaldi** | Flatpak | `com.vivaldi.Vivaldi` | Highly customisable Chromium browser for power users. |
 | **Chromium** | Native | `chromium` | Open-source base of Google Chrome. |
 
@@ -321,7 +361,7 @@ Apps live in [`catalogue.json`](catalogue.json). Adding one is a single object:
 | :--- | :---: | :--- | :--- |
 | **Git** | Native | `git` | Distributed version control system. |
 | **Neovim** | Native | `neovim` | Extensible Vim-based text editor. |
-| **Visual Studio Code** | Flatpak | `com.visualstudio.code` | Code editor with debugging and Git integration. |
+| **Visual Studio Code** | Vendor / Flatpak fallback | `code` / `com.visualstudio.code` | Code editor with debugging and Git integration. |
 | **Python 3** | Native | `python3` <br><sub>Arch: python</sub> | High-level programming language interpreter. |
 | **Node.js** | Native | `nodejs` | JavaScript runtime for servers and tooling. |
 | **Docker Engine** | Native | `docker` <br><sub>Fedora: moby-engine · Debian: docker.io</sub> | Containers for building and running applications. |

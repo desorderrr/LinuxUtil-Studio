@@ -17,6 +17,9 @@ readable codebase on purpose — patches that keep it that way are very welcome.
    secrets.
 6. **Keep it dependency-light.** The GUI needs PySide6; the tests need nothing
    beyond the standard library.
+7. **Vendor repositories need a fallback.** Only add official, signed vendor
+   repositories with pinned key fingerprints, a `--dry-run`, explicit GUI
+   confirmation, ownership-aware removal, and a working Flatpak fallback.
 
 ## Adding an app
 
@@ -37,6 +40,8 @@ Append an entry to [`catalogue.json`](catalogue.json):
 - Use `"packages": {"arch": "..."}` when the package is renamed per family.
 - Prefer `native` when the distribution packages the app well; use `flatpak`
   when the app is only shipped that way or clearly works better sandboxed.
+- Use `vendor` only for first-party repositories implemented in the reviewed
+  `scripts/vendor_apps.sh`; include both fallback metadata fields and tests.
 - Categories are fixed: Internet, Communication, Development, Gaming, Media,
   Graphics, Productivity, System, Utilities.
 
