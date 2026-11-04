@@ -74,7 +74,7 @@ cat <<EOF > "$DESKTOP_FILE"
 Name=LinuxUtil Studio
 Comment=Instalador de ferramentas Linux
 Exec=$INSTALL_DIR/.venv/bin/python $INSTALL_DIR/main.py
-Icon=$INSTALL_DIR/assets/logos/vscode.svg
+Icon=$INSTALL_DIR/assets/logo.svg
 Terminal=false
 Type=Application
 Categories=Utility;

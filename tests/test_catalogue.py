@@ -80,6 +80,14 @@ class CatalogueTests(unittest.TestCase):
             self.assertIn(b"<svg", head, path)
 
 
+class BrandingTests(unittest.TestCase):
+    def test_project_logo_is_svg(self):
+        path = os.path.join(ROOT, "assets", "logo.svg")
+        self.assertTrue(os.path.isfile(path), "falta assets/logo.svg")
+        with open(path, "rb") as handle:
+            self.assertIn(b"<svg", handle.read(200))
+
+
 class ResolutionTests(unittest.TestCase):
     """Confirma que cada entrada tem um alvo utilizável nesta distro."""
 

@@ -3,7 +3,7 @@ import html
 import os
 
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QListWidget, QListWidgetItem, QLabel, QPushButton, QTextEdit, QLineEdit,
@@ -200,6 +200,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("LinuxUtil Studio")
+        logo_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "assets", "logo.svg",
+        )
+        self.logo_path = logo_path
+        self.setWindowIcon(QIcon(logo_path))
         self.resize(1040, 740)
 
         self.catalogue = load_catalogue()
@@ -234,6 +240,10 @@ class MainWindow(QMainWindow):
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(16, 16, 16, 16)
         sidebar_layout.setSpacing(10)
+
+        logo_label = QLabel()
+        logo_label.setPixmap(QIcon(self.logo_path).pixmap(44, 44))
+        sidebar_layout.addWidget(logo_label)
 
         brand = QLabel("LinuxUtil Studio")
         brand.setObjectName("Brand")

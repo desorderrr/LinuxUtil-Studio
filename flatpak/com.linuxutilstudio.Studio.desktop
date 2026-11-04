@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=LinuxUtil Studio
+Comment=Install Linux tools with your package manager
+Exec=linuxutil-studio
+Icon=com.linuxutilstudio.Studio
+Terminal=false
+Type=Application
+Categories=Utility;
+StartupNotify=true

@@ -25,6 +25,8 @@ modules:
       - mkdir -p /app/lib/linuxutil-studio
       - cp -r core ui assets catalogue.json main.py /app/lib/linuxutil-studio/
       - install -Dm755 flatpak/run.sh /app/bin/linuxutil-studio
+      - install -Dm644 assets/logo.svg /app/share/icons/hicolor/scalable/apps/com.linuxutilstudio.Studio.svg
+      - install -Dm644 flatpak/com.linuxutilstudio.Studio.desktop /app/share/applications/com.linuxutilstudio.Studio.desktop
     sources:
       - type: dir
         path: ..
