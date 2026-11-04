@@ -188,7 +188,7 @@ class ResolutionTests(unittest.TestCase):
     def test_native_remove_commands_keep_package_manager_dependencies(self):
         expected = {
             "apt": ["sudo", "apt-get", "remove", "-y", "sample"],
-            "dnf": ["sudo", "dnf", "remove", "-y", "sample"],
+            "dnf": ["sudo", "dnf", "remove", "--no-autoremove", "-y", "sample"],
             "pacman": ["sudo", "pacman", "-R", "--noconfirm", "sample"],
             "zypper": ["sudo", "zypper", "remove", "-y", "sample"],
         }
@@ -353,6 +353,16 @@ class ScriptTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("[dry-run]", result.stdout)
                 self.assertIn("nothing", result.stdout.lower())
+
+        if SystemInfo().family == "fedora":
+            result = subprocess.run(
+                ["bash", script, "vscode", "remove", "--dry-run"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("dnf remove --no-autoremove", result.stdout)
 
 
 if __name__ == "__main__":

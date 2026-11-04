@@ -17,6 +17,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Invalid catalogue shapes now fail with an explicit entry and field error.
 - Installation-state checks report timeouts instead of silently showing an app
   as not installed.
+- Flatpak builds no longer require pip to be installed in the host Python
+  environment.
+- Fedora app removal now preserves automatically installed dependencies.
 
 ### Changed
 
@@ -33,6 +36,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Added confirmed, previewable official vendor-repository installs for VS Code
   and Brave on Debian, Fedora and openSUSE, with Flatpak fallbacks and
   ownership-aware source removal.
+- RPM signing keys are checked against pinned fingerprints before use; openSUSE
+  imports only the verified vendor repository key during installation.
+- Tagged releases run the test suite, build a Flatpak bundle and checksum, and
+  attach both to the GitHub release.
 - Documented the catalogue's package-source policy and VS Code's official
   distro packages versus its checksummed Flathub build.
 - Audited upstream installation channels and recorded the strongest

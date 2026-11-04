@@ -171,18 +171,16 @@ application menu. Works regardless of your current working directory.
 
 ### Option 2 — AppImage
 
-An AppImage is not currently published. Use the source installer above, or
-build from source:
+Download the AppImage from the
+[v1.0.0 release](https://github.com/desorderrr/LinuxUtil-Studio/releases/download/v1.0.0/LinuxUtil_Studio-x86_64.AppImage):
 
 ```bash
-git clone https://github.com/desorderrr/LinuxUtil-Studio.git
-cd LinuxUtil-Studio
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python main.py
+chmod +x LinuxUtil_Studio-x86_64.AppImage
+./LinuxUtil_Studio-x86_64.AppImage
 ```
 
-An AppImage release will be linked here once a verified bundle is available.
+This binary is from the initial release; use the source installer for the
+latest changes.
 
 ### Option 3 — Flatpak (experimental)
 
@@ -191,18 +189,23 @@ An AppImage release will be linked here once a verified bundle is available.
 > functional on Fedora and Arch, but not yet validated on every desktop, so
 > prefer the source installer for daily use.
 
-No prebuilt Flatpak bundle is currently published. Build it locally:
-
-```bash
-bash flatpak/build.sh
-```
-
-Then install the generated bundle:
+Download `linuxutil-studio.flatpak` from the
+[latest release](https://github.com/desorderrr/LinuxUtil-Studio/releases/latest),
+then install it:
 
 ```bash
 flatpak install --user ./linuxutil-studio.flatpak
 flatpak run com.linuxutilstudio.Studio
 ```
+
+To build it locally (downloads the PySide6 wheels before building):
+
+```bash
+bash flatpak/build.sh
+```
+
+Tagged releases publish the Flatpak bundle and its `SHA256SUMS` file
+automatically.
 
 Requirements: `flatpak-builder` and `org.freedesktop.Sdk//25.08`.
 The Flatpak remains experimental; see the caveat above before using it.

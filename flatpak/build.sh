@@ -32,7 +32,10 @@ fi
 if [ ! -d "$WHEELS" ] || [ -z "$(ls -A "$WHEELS" 2>/dev/null)" ]; then
     echo "A descarregar as wheels do PySide6..."
     mkdir -p "$WHEELS"
-    python3 -m pip download -r "$ROOT/requirements.txt" -d "$WHEELS"
+    PIP_ENV="$(mktemp -d "${TMPDIR:-/tmp}/linuxutil-studio-pip.XXXXXX")"
+    trap 'rm -rf -- "$PIP_ENV"' EXIT
+    python3 -m venv "$PIP_ENV"
+    "$PIP_ENV/bin/python" -m pip download -r "$ROOT/requirements.txt" -d "$WHEELS"
 fi
 
 flatpak-builder --force-clean --state-dir="$BUILD_DIR.state" "$BUILD_DIR" \

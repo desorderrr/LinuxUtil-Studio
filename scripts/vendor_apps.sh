@@ -80,6 +80,7 @@ fi
 
 state_dir=/var/lib/linuxutil-studio/vendor-repos
 state_file="$state_dir/$app"
+rpm_repo_verified=0
 
 run() {
     if (( dry_run )); then
@@ -90,12 +91,56 @@ run() {
     fi
 }
 
+verify_signing_key() {
+    local key_file="$1" key_info primary_keys=0 fingerprints="" expected_count=0
+    local line primary=0 expected
+    key_info="$(GNUPGHOME="$temp_dir/gnupg" gpg --no-options --batch --show-keys --with-colons "$key_file")"
+    while IFS= read -r line; do
+        local -a fields
+        IFS=: read -r -a fields <<< "$line"
+        case "${fields[0]:-}" in
+            pub) ((primary_keys += 1)); primary=1 ;;
+            fpr)
+                if (( primary )); then
+                    fingerprints+="${fingerprints:+$'\n'}${fields[9]}"
+                    primary=0
+                fi
+                ;;
+        esac
+    done <<< "$key_info"
+
+    while IFS= read -r expected; do
+        [[ -n "$expected" ]] || continue
+        ((expected_count += 1))
+        case $'\n'"$fingerprints"$'\n' in
+            *$'\n'"$expected"$'\n'*) ;;
+            *)
+                printf '[!] Vendor signing-key fingerprint mismatch; repository was not added.\n' >&2
+                return 1
+                ;;
+        esac
+    done <<< "$expected_fingerprints"
+
+    if [[ "$primary_keys" != "$expected_count" ]]; then
+        printf '[!] Vendor signing-key fingerprint mismatch; repository was not added.\n' >&2
+        return 1
+    fi
+}
+
 repo_path() {
     case "$family" in
         debian) printf '%s' "$apt_repo" ;;
         fedora) printf '%s' "$rpm_repo" ;;
         suse) printf '%s' "$suse_repo" ;;
     esac
+}
+
+repo_alias() {
+    if [[ "$app" == "vscode" ]]; then
+        printf 'code'
+    else
+        printf 'brave-browser'
+    fi
 }
 
 configure_apt_repo() {
@@ -127,21 +172,12 @@ configure_apt_repo() {
         return 1
     }
 
-    local fingerprints key_info primary_keys
     temp_dir="$(mktemp -d)"
-    trap 'rm -f "$temp_dir/vendor-key" "$temp_dir/vendor-key.gpg" "$temp_dir/vendor.sources"; rm -rf "$temp_dir/gnupg"; rmdir "$temp_dir"' EXIT
+    trap 'rm -rf -- "$temp_dir"' EXIT
     mkdir -m 0700 "$temp_dir/gnupg"
     curl --proto '=https' --tlsv1.2 --max-filesize 1048576 \
         --fail --location --silent --show-error "$key_url" -o "$temp_dir/vendor-key"
-    key_info="$(GNUPGHOME="$temp_dir/gnupg" gpg --no-options --batch --show-keys --with-colons "$temp_dir/vendor-key")"
-    primary_keys="$(printf '%s\n' "$key_info" | awk -F: '$1 == "pub" { count++ } END { print count+0 }')"
-    fingerprints="$(printf '%s\n' "$key_info" |
-        awk -F: '$1 == "pub" { primary=1; next } primary && $1 == "fpr" { print $10; primary=0 }')"
-    if [[ "$primary_keys" != "$(printf '%s\n' "$expected_fingerprints" | awk 'NF { count++ } END { print count+0 }')" ]] ||
-        [[ "$(printf '%s\n' "$fingerprints" | sort)" != "$(printf '%s\n' "$expected_fingerprints" | sort)" ]]; then
-        printf '[!] Vendor signing-key fingerprint mismatch; repository was not added.\n' >&2
-        return 1
-    fi
+    verify_signing_key "$temp_dir/vendor-key"
 
     install -d -m 0755 /etc/apt/keyrings
     GNUPGHOME="$temp_dir/gnupg" gpg --no-options --batch --dearmor --yes \
@@ -170,6 +206,22 @@ configure_rpm_repo() {
         printf '[i] Keeping existing repository file %s.\n' "$target"
         return 0
     fi
+
+    command -v curl >/dev/null || {
+        printf '[!] curl is required to fetch the vendor signing key.\n' >&2
+        return 1
+    }
+    command -v gpg >/dev/null || {
+        printf '[!] gpg is required to verify the vendor signing key.\n' >&2
+        return 1
+    }
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf -- "$temp_dir"' EXIT
+    mkdir -m 0700 "$temp_dir/gnupg"
+    curl --proto '=https' --tlsv1.2 --max-filesize 1048576 \
+        --fail --location --silent --show-error "$key_url" -o "$temp_dir/vendor-key"
+    verify_signing_key "$temp_dir/vendor-key"
+    rpm_repo_verified=1
 
     install -d -m 0755 "$(dirname "$target")"
     if [[ "$app" == "vscode" ]]; then
@@ -203,9 +255,9 @@ REPO
 write_state() {
     local repo_owned="$1" key_owned="$2"
     local repo_hash key_hash=""
-    repo_hash="$(sha256sum "$(repo_path)" | awk '{print $1}')"
+    repo_hash="$(sha256sum "$(repo_path)" | cut -d ' ' -f 1)"
     if (( key_owned )); then
-        key_hash="$(sha256sum "$apt_key" | awk '{print $1}')"
+        key_hash="$(sha256sum "$apt_key" | cut -d ' ' -f 1)"
     fi
     printf 'repo=%s\nkey=%s\nrepo_sha256=%s\nkey_sha256=%s\n' \
         "$repo_owned" "$key_owned" "$repo_hash" "$key_hash" > "$state_file"
@@ -224,6 +276,7 @@ install_app() {
             if [[ "$family" == "fedora" ]]; then
                 run dnf install -y "$package"
             else
+                run zypper --non-interactive --gpg-auto-import-keys refresh "$(repo_alias)"
                 run zypper --non-interactive install "$package"
             fi
         fi
@@ -240,7 +293,11 @@ install_app() {
         if [[ "$family" == "fedora" ]]; then
             dnf install -y "$package"
         else
-            zypper --non-interactive refresh
+            if (( rpm_repo_verified )); then
+                zypper --non-interactive --gpg-auto-import-keys refresh "$(repo_alias)"
+            else
+                zypper --non-interactive refresh "$(repo_alias)"
+            fi
             zypper --non-interactive install "$package"
         fi
     fi
@@ -253,7 +310,7 @@ remove_app() {
             printf '    [dry-run] Remove only LinuxUtil-managed source/key files, if owned\n'
             run apt-get update
         elif [[ "$family" == "fedora" ]]; then
-            run dnf remove -y "$package"
+            run dnf remove --no-autoremove -y "$package"
             printf '    [dry-run] Remove only LinuxUtil-managed repository file, if owned\n'
         else
             run zypper --non-interactive remove "$package"
@@ -265,7 +322,7 @@ remove_app() {
 
     case "$family" in
         debian) apt-get remove -y "$package" ;;
-        fedora) dnf remove -y "$package" ;;
+        fedora) dnf remove --no-autoremove -y "$package" ;;
         suse) zypper --non-interactive remove "$package" ;;
     esac
 
@@ -282,7 +339,7 @@ remove_app() {
 
         local repo_removed=0
         if (( repo_owned )) && [[ -f "$(repo_path)" && -n "$repo_hash" ]] &&
-            [[ "$(sha256sum "$(repo_path)" | awk '{print $1}')" == "$repo_hash" ]]; then
+            [[ "$(sha256sum "$(repo_path)" | cut -d ' ' -f 1)" == "$repo_hash" ]]; then
             rm -f "$(repo_path)"
             repo_removed=1
         elif (( repo_owned )) && [[ ! -e "$(repo_path)" ]]; then
@@ -292,7 +349,7 @@ remove_app() {
         fi
         if (( key_owned && repo_removed )) && [[ "$family" == "debian" ]] &&
             [[ -f "$apt_key" && -n "$key_hash" ]] &&
-            [[ "$(sha256sum "$apt_key" | awk '{print $1}')" == "$key_hash" ]]; then
+            [[ "$(sha256sum "$apt_key" | cut -d ' ' -f 1)" == "$key_hash" ]]; then
             rm -f "$apt_key"
         elif (( key_owned && repo_removed )) && [[ -e "$apt_key" ]]; then
             printf '[!] Signing key changed since install; keeping %s.\n' "$apt_key"

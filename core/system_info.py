@@ -337,7 +337,7 @@ class SystemInfo:
         if pm == "apt":
             return [[priv, "apt-get", "remove", "-y", package_name]]
         if pm == "dnf":
-            return [[priv, "dnf", "remove", "-y", package_name]]
+            return [[priv, "dnf", "remove", "--no-autoremove", "-y", package_name]]
         if pm == "pacman":
             return [[priv, "pacman", "-R", "--noconfirm", package_name]]
         if pm == "zypper":
