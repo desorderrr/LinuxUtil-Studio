@@ -44,6 +44,8 @@ class Installer:
         cmd = self.sys_info.get_check_command(app)
         if not cmd:
             return False
+        if app.get("package_type", "native") != "script":
+            cmd = self.sys_info.host_wrap(cmd)
         return self._command_ok(cmd)
 
     # ------------------------------------------------------------------
@@ -103,7 +105,25 @@ class Installer:
                 except Exception:
                     pass
 
-        for cmd in commands:
+        # Para pacotes nativos/flatpak/snap o dry-run é puramente informativo:
+        # mostramos os comandos mas não executamos nada. Os packs (scripts)
+        # correm o próprio script com --dry-run, por isso continuam no loop.
+        if dry_run and app.get("package_type", "native") != "script":
+            for cmd in commands:
+                emit(f"$ {' '.join(self.sys_info.host_wrap(cmd))}")
+            return {
+                "status": "success",
+                "message": f"Preview for {name} finished (nothing was changed).",
+                "output": full_output,
+                "dry_run": True,
+            }
+
+        for raw_cmd in commands:
+            cmd = (
+                raw_cmd
+                if app.get("package_type") == "script"
+                else self.sys_info.host_wrap(raw_cmd)
+            )
             emit(f"$ {' '.join(cmd)}")
             try:
                 process = subprocess.Popen(

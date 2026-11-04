@@ -39,11 +39,12 @@
 | [Screenshots](#screenshots) | [Command line](#command-line) |
 | [Why LinuxUtil Studio](#why-linuxutil-studio) | [The catalogue](#the-catalogue) |
 | [Features](#features) | [Gaming packs](#gaming-packs) |
-| [Quick start](#quick-start) | [How it works](#how-it-works) |
+| [Installation](#installation) | [How it works](#how-it-works) |
 | [Using the app](#using-the-app) | [Supported distributions](#supported-distributions) |
 | [Permissions & security](#permissions--security) | [Project structure](#project-structure) |
 | [Development](#development) | [FAQ & troubleshooting](#faq--troubleshooting) |
-| [Roadmap](#roadmap) | [Credits](#credits) |
+| [Roadmap](#roadmap) | [Changelog](CHANGELOG.md) |
+| [Credits](#credits) | |
 
 ## Screenshots
 
@@ -147,7 +148,12 @@ chmod +x LinuxUtil_Studio-x86_64.AppImage
 
 No installation, no root, no Python required on the host.
 
-### Option 3 — Flatpak
+### Option 3 — Flatpak (experimental)
+
+> **Experimental.** The Flatpak runs the UI inside the sandbox but delegates
+> package installation to the host through `flatpak-spawn --host`. It is
+> functional on Fedora and Arch, but not yet validated on every desktop, so
+> prefer the AppImage or `install.sh` for daily use.
 
 Grab `linuxutil-studio.flatpak` from the
 [latest release](https://github.com/desorderrr/LinuxUtil-Studio/releases/latest),
@@ -157,6 +163,14 @@ then:
 flatpak install --user ./linuxutil-studio.flatpak
 flatpak run com.linuxutilstudio.Studio
 ```
+
+To build it yourself (downloads the PySide6 wheels first, then builds offline):
+
+```bash
+bash flatpak/build.sh
+```
+
+Requirements: `flatpak-builder` and `org.freedesktop.Sdk//25.08`.
 
 ### Option 4 — From source
 

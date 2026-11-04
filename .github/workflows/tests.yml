@@ -30,7 +30,29 @@ jobs:
 
       - name: Bash syntax check
         run: |
-          for script in scripts/*.sh; do
+          for script in scripts/*.sh install.sh flatpak/build.sh; do
             bash -n "$script"
             echo "ok $script"
           done
+
+  clean-install:
+    name: clean install (from source)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -U pip
+          .venv/bin/pip install -r requirements.txt
+
+      - name: CLI smoke tests
+        run: |
+          .venv/bin/python main.py --info
+          .venv/bin/python main.py --list
+          .venv/bin/python main.py --install htop --dry-run

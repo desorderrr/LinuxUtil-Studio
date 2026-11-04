@@ -13,11 +13,13 @@ import os
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from core.catalogue_loader import load_catalogue  # noqa: E402
+from core.installer import Installer  # noqa: E402
 from core.system_info import SystemInfo  # noqa: E402
 
 CATEGORIES = {
@@ -110,6 +112,28 @@ class ResolutionTests(unittest.TestCase):
             for cmd in self.info.get_install_commands(app):
                 self.assertIsInstance(cmd, list, app["id"])
                 self.assertTrue(all(isinstance(part, str) for part in cmd), app["id"])
+
+
+class DryRunTests(unittest.TestCase):
+    """``--dry-run`` nunca pode executar comandos nativos."""
+
+    def test_native_dry_run_does_not_execute(self):
+        installer = Installer()
+        app = {
+            "id": "__test__",
+            "name": "Test",
+            "package_type": "native",
+            "package_name": "true",
+        }
+        with mock.patch.object(
+            installer.sys_info, "get_install_commands", return_value=[["true"]]
+        ), mock.patch("core.installer.subprocess.Popen") as popen:
+            result = installer.run_install(app, dry_run=True)
+
+        popen.assert_not_called()
+        self.assertEqual(result["status"], "success")
+        self.assertTrue(result.get("dry_run"))
+        self.assertIn("$ true", result["output"])
 
 
 class ScriptTests(unittest.TestCase):

@@ -74,8 +74,9 @@ def install(app_id, dry_run=False):
     return 0 if result["status"] == "success" else 1
 
 
-def run_cli():
+def run_cli(dry_run=False):
     info = SystemInfo()
+    installer = Installer()
     print("--- LinuxUtil Studio (CLI) ---")
     print(f"Detected: {info.distro} | Manager: {info.package_manager}")
     print("-" * 30)
@@ -100,6 +101,7 @@ def run_cli():
     result = installer.run_install(
         target,
         on_output=lambda line: print(line, flush=True),
+        dry_run=dry_run,
     )
     print(f"Result: {result['status']} - {result['message']}")
     return 0 if result["status"] == "success" else 1
@@ -126,7 +128,7 @@ def main():
     if args.cli or not GUI_AVAILABLE:
         if not GUI_AVAILABLE and not args.cli:
             print("PySide6 not found - falling back to CLI mode.\n")
-        return run_cli()
+        return run_cli(dry_run=args.dry_run)
 
     app = QApplication(sys.argv)
     window = MainWindow()

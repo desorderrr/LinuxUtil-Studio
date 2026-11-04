@@ -18,10 +18,14 @@ FAMILY_BY_MANAGER = {
 class SystemInfo:
     def __init__(self):
         self.os_name = platform.system().lower()
+        self.is_flatpak = os.path.exists("/.flatpak-info")
+        self.has_flatpak_spawn = shutil.which("flatpak-spawn") is not None
         self.distro = self._get_distro()
         self.package_manager = self._get_package_manager()
-        self.has_flatpak = shutil.which("flatpak") is not None
-        self.has_snap = shutil.which("snap") is not None
+        # Dentro do sandbox o binário `flatpak` pode não existir; o próprio app
+        # já é Flatpak, por isso assumimos que o host tem Flatpak.
+        self.has_flatpak = self.is_flatpak or shutil.which("flatpak") is not None
+        self.has_snap = self._host_has("snap")
         self._privilege_tool = None
 
     # ------------------------------------------------------------------
@@ -36,6 +40,11 @@ class SystemInfo:
         terminal, por isso nesse caso usa-se ``pkexec`` (diálogo do polkit).
         """
         if self._privilege_tool is not None:
+            return self._privilege_tool
+
+        # Dentro do Flatpak não há sudo/pkexec locais: perguntamos ao host.
+        if self.is_flatpak:
+            self._privilege_tool = "pkexec" if self._host_has("pkexec") else "sudo"
             return self._privilege_tool
 
         self._privilege_tool = "sudo"
@@ -60,7 +69,41 @@ class SystemInfo:
             self._privilege_tool = "pkexec"
         return self._privilege_tool
 
+    def host_wrap(self, cmd):
+        """Executa no host quando a app corre dentro do sandbox Flatpak.
+
+        Sem isto, ``dnf``/``apt``/``pacman`` e o ``pkexec`` não existem (ou não
+        têm permissões) dentro do sandbox. ``flatpak-spawn --host`` delega no
+        sistema real; o manifesto pede ``--talk-name=org.freedesktop.Flatpak``.
+        """
+        if self.is_flatpak and self.has_flatpak_spawn:
+            # --directory=/ evita herdar o cwd /app/... que não existe no host.
+            return ["flatpak-spawn", "--host", "--directory=/"] + list(cmd)
+        return list(cmd)
+
+    def _host_run(self, cmd):
+        """Corre um comando no host (ou localmente fora do Flatpak)."""
+        if self.is_flatpak and self.has_flatpak_spawn:
+            cmd = ["flatpak-spawn", "--host", "--directory=/"] + list(cmd)
+        return subprocess.run(
+            cmd, capture_output=True, text=True, timeout=10,
+        )
+
+    def _host_has(self, binary):
+        try:
+            return self._host_run(["sh", "-c", f"command -v {binary}"]).returncode == 0
+        except Exception:
+            return False
+
     def _get_distro(self):
+        if self.is_flatpak:
+            try:
+                out = self._host_run(["cat", "/etc/os-release"]).stdout
+                for line in out.splitlines():
+                    if line.startswith("ID="):
+                        return line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                pass
         try:
             import distro
             return distro.id()
@@ -83,6 +126,16 @@ class SystemInfo:
             return "pacman"
         elif dist in ["opensuse", "suse", "opensuse-leap", "opensuse-tumbleweed"]:
             return "zypper"
+
+        # Fallback: dentro do Flatpak a distro pode não ser detetável,
+        # por isso perguntamos ao host qual o gestor disponível.
+        if self.is_flatpak:
+            for manager, binary in (
+                ("apt", "apt-get"), ("dnf", "dnf"),
+                ("pacman", "pacman"), ("zypper", "zypper"),
+            ):
+                if self._host_has(binary):
+                    return manager
         return None
 
     # ------------------------------------------------------------------
