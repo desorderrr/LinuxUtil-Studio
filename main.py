@@ -24,6 +24,8 @@ def print_system_info():
     print(f"Family         : {info.family}")
     print(f"Flatpak        : {'yes' if info.has_flatpak else 'no'}")
     print(f"Snap           : {'yes' if info.has_snap else 'no'}")
+    if info.family == "arch":
+        print(f"AUR helpers    : {', '.join(info.aur_helpers) if info.aur_helpers else 'none (yay/paru not detected)'}")
     print(f"Privilege tool : {info.privilege_tool}")
     print(f"GUI available  : {'yes' if GUI_AVAILABLE else 'no (install PySide6)'}")
 
@@ -156,6 +158,8 @@ def main():
     parser.add_argument("--remove", metavar="ID", help="remove an app by catalogue ID and exit")
     parser.add_argument("--dry-run", action="store_true",
                         help="with --install/--cli: preview setup scripts without changing anything")
+    parser.add_argument("--updates", action="store_true",
+                        help="list available system package updates and exit")
     args = parser.parse_args()
 
     if args.info:
@@ -163,6 +167,17 @@ def main():
         return 0
     if args.list:
         list_apps()
+        return 0
+    if args.updates:
+        info = SystemInfo()
+        print(f"--- Available updates ({info.package_manager}) ---")
+        ups = info.available_updates()
+        if not ups:
+            print("No updates available (or could not query).")
+            return 0
+        for u in ups:
+            print(u)
+        print(f"\n{len(ups)} package(s) can be updated.")
         return 0
     if args.install:
         return install(args.install, dry_run=args.dry_run)

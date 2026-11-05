@@ -652,20 +652,21 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | *Gamescope missing after the Ubuntu pack* | Not packaged in older Ubuntu releases. The pack reports it as skipped and continues. |
 | *Steam download is huge* | The Flatpak pulls the Steam runtime and 32-bit graphics drivers. It is a one-time cost and keeps the host clean. |
 | *A card says "Reinstall"* | The package was detected on the system. Reinstall is harmless and idempotent. |
-| *No gaming pack for openSUSE* | Not written yet. Clicking **Run setup** reports that no script is available for your family and nothing is installed. |
+| *Gaming pack for openSUSE* | Available since v1.1: `scripts/gaming_suse.sh` (zypper). Reports packages that are not in the configured repositories instead of failing. |
 | *Nothing appears / no window on Wayland* | Run from a terminal and check the output; the app needs `WAYLAND_DISPLAY` or `DISPLAY` and a Qt platform plugin. |
 
 ## Roadmap
 
 - [x] 55-app catalogue with per-distro package names
 - [x] Bundled brand logos with theme-aware tiles
-- [x] Gaming packs for Fedora, Ubuntu/Debian and Arch/CachyOS
+- [x] Gaming packs for Fedora, Ubuntu/Debian, Arch/CachyOS and openSUSE
 - [x] `--dry-run` preview for every script
-- [ ] Gaming pack for openSUSE
-- [ ] Immutable systems (`rpm-ostree`, `transactional-update`)
-- [ ] AUR helper detection on Arch
-- [ ] "Updates available" view
-- [ ] Desktop entry and app icon, so it launches from the menu
+- [x] Desktop entry and app icon, so it launches from the menu
+- [x] AUR helper detection on Arch (yay/paru/...) — reported, never auto-installed
+- [x] "Updates available" view (read-only listing, `--updates`)
+- [ ] Immutable systems (`rpm-ostree`, `transactional-update`) — deferred: different flows and risk profile
+- [ ] AUR helper *usage* (install via yay/paru when present) — after detection stabilises
+- [ ] Flatpak/AppImage distribution policy: keep both, or recommend Flatpak + source only
 
 ## Verified on
 
@@ -674,8 +675,10 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | Host | Fedora 44, GNOME on Wayland |
 | Manager | `dnf`, Flatpak installed, Snap absent |
 | Privilege | `pkexec` (polkit) |
-| Checks | 11/11 unit tests, 3/3 gaming scripts (`bash -n` + `--dry-run`), 55/55 resolved install commands |
-| Live test | `pkexec dnf install -y htop` → polkit prompt → `Complete!` → *Installed* badge |
+| Checks | 13/13 unit tests, 4/4 gaming scripts (`bash -n` + `--dry-run`), 55/55 resolved install commands, `--updates` smoke |
+| Live test | `pkexec dnf install -y htop` → polkit prompt → `Complete!` → *Installed* badge; `bash install.sh` from a clean clone |
+| Packaging | AppImage + Flatpak (experimental) rebuilt with the project logo; Flatpak delegates to the host |
+
 
 ## Credits
 

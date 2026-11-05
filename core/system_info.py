@@ -34,6 +34,7 @@ class SystemInfo:
         self.has_flatpak = self.is_flatpak or shutil.which("flatpak") is not None
         self.has_snap = self._host_has("snap")
         self._privilege_tool = None
+        self.aur_helpers = self._detect_aur_helpers()
 
     # ------------------------------------------------------------------
     # Escalada de privilégios
@@ -101,6 +102,20 @@ class SystemInfo:
             return self._host_run(["sh", "-c", f"command -v {binary}"]).returncode == 0
         except Exception:
             return False
+
+    def _detect_aur_helpers(self):
+        """Detecta helpers AUR (yay/paru) no Arch, sem os instalar.
+
+        Devolve a lista de helpers disponíveis, por ordem de preferência.
+        Fora do Arch (ou sem nenhum) devolve lista vazia.
+        """
+        if self.family != "arch":
+            return []
+        found = []
+        for helper in ("yay", "paru", "trizen", "pikaur"):
+            if self._host_has(helper):
+                found.append(helper)
+        return found
 
     def _get_distro(self):
         os_release = {}
@@ -372,6 +387,65 @@ class SystemInfo:
         if pm == "pacman":
             return ["pacman", "-Q", package_name]
         return None
+
+    def available_updates(self, timeout=60):
+        """Lista (apenas consulta, sem instalar) os pacotes com atualização.
+
+        Devolve uma lista de nomes de pacote. Nunca executa atualizações.
+        """
+        pm = self.package_manager
+        cmd = None
+        if pm == "apt":
+            cmd = ["apt", "list", "--upgradable"]
+        elif pm == "dnf":
+            cmd = ["dnf", "check-update", "-q"]
+        elif pm == "pacman":
+            cmd = ["pacman", "-Qu"]
+        elif pm == "zypper":
+            cmd = ["zypper", "list-updates"]
+        if not cmd:
+            return []
+
+        try:
+            result = self._host_run(cmd) if self.is_flatpak else subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout,
+            )
+        except Exception:
+            return []
+
+        ARCH_SUFFIXES = (".x86_64", ".i686", ".noarch", ".aarch64", ".armv7hl")
+        names = []
+        for line in (result.stdout or "").splitlines():
+            line = line.strip()
+            if not line or line.startswith("Listing...") or line.startswith("Last metadata"):
+                continue
+            if line.lower() in ("upgrades", "packages", "repository"):
+                continue
+            # apt: "pkg/version arch [upgradable from: ...]"
+            if pm == "apt" and "/" in line:
+                names.append(line.split("/", 1)[0].strip())
+                continue
+            # pacman: "pkg oldver -> newver"
+            if pm == "pacman" and " -> " in line:
+                names.append(line.split()[0].strip())
+                continue
+            parts = line.split()
+            if len(parts) >= 1:
+                token = parts[0]
+                if token.lower() in ("upgrades", "packages", "repository", "last"):
+                    continue
+                for suf in ARCH_SUFFIXES:
+                    if token.endswith(suf):
+                        token = token[: -len(suf)]
+                names.append(token)
+        # dedup preserving order
+        seen = set()
+        out = []
+        for n in names:
+            if n and n not in seen:
+                seen.add(n)
+                out.append(n)
+        return out
 
     def __repr__(self):
         return (

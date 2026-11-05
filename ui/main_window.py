@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from core.catalogue_loader import load_catalogue
 from core.installer import Installer
+from core.system_info import SystemInfo
 from ui import icons, theme as theme_mod
 
 
@@ -71,6 +72,18 @@ class StatusWorker(QThread):
                 self.failed.emit(app["id"], str(error))
                 continue
             self.found.emit(app["id"], installed)
+
+
+class UpdateWorker(QThread):
+    """Consulta (sem instalar) os pacotes com atualização disponível."""
+    done = Signal(list)
+
+    def run(self):
+        try:
+            info = SystemInfo()
+            self.done.emit(info.available_updates())
+        except Exception:
+            self.done.emit([])
 
 
 # ----------------------------------------------------------------------
@@ -264,6 +277,7 @@ class MainWindow(QMainWindow):
         self.installed_state = set()
         self.install_worker = None
         self.status_worker = None
+        self.update_worker = None
         self.busy = False
         self.busy_label = "Working..."
         self.active_app_id = None
@@ -329,6 +343,13 @@ class MainWindow(QMainWindow):
         self.theme_btn.setToolTip("Alternar tema claro/escuro (Ctrl+D)")
         self.theme_btn.clicked.connect(self.toggle_theme)
         sidebar_layout.addWidget(self.theme_btn)
+
+        self.updates_btn = QPushButton("Updates available")
+        self.updates_btn.setObjectName("ThemeToggle")
+        self.updates_btn.setCursor(Qt.PointingHandCursor)
+        self.updates_btn.setToolTip("Check which system packages have updates (read-only)")
+        self.updates_btn.clicked.connect(self.check_updates)
+        sidebar_layout.addWidget(self.updates_btn)
 
         # ---------------- Conteúdo ----------------
         content_area = QWidget()
@@ -454,8 +475,10 @@ class MainWindow(QMainWindow):
         self.populate_apps(self._current_filter())
 
     def _update_summary(self):
-        self.brand_sub.setText(
-            f"{len(self.catalogue)} apps · {len(self.installed_state)} installed")
+        text = f"{len(self.catalogue)} apps · {len(self.installed_state)} installed"
+        if self.installer.sys_info.family == "arch" and self.installer.sys_info.aur_helpers:
+            text += f" · AUR: {', '.join(self.installer.sys_info.aur_helpers)}"
+        self.brand_sub.setText(text)
 
     # ------------------------------------------------------------------
     # Verificação de estado
@@ -465,6 +488,31 @@ class MainWindow(QMainWindow):
         self.status_worker.found.connect(self.on_status_found)
         self.status_worker.failed.connect(self.on_status_failed)
         self.status_worker.start()
+
+    def check_updates(self):
+        if self.update_worker and self.update_worker.isRunning():
+            return
+        self.updates_btn.setEnabled(False)
+        self.updates_btn.setText("Checking...")
+        self.update_worker = UpdateWorker()
+        self.update_worker.done.connect(self.on_updates_found)
+        self.update_worker.start()
+
+    def on_updates_found(self, updates):
+        self.updates_btn.setEnabled(True)
+        self.updates_btn.setText("Updates available")
+        if not updates:
+            QMessageBox.information(self, "Updates", "No updates available (or could not query).")
+            return
+        text = "\n".join(f"• {u}" for u in updates[:200])
+        if len(updates) > 200:
+            text += f"\n... and {len(updates)-200} more"
+        box = QMessageBox(self)
+        box.setWindowTitle("Updates available")
+        box.setText(f"{len(updates)} package(s) can be updated.")
+        box.setDetailedText(text)
+        box.setInformativeText("This list is read-only. Install updates with your package manager or the system updater.")
+        box.exec()
 
     def on_status_found(self, app_id, installed):
         if installed:

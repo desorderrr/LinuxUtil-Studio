@@ -115,7 +115,9 @@
         "category": "Development",
         "package_type": "native",
         "package_name": "python3",
-        "packages": {"arch": "python"}
+        "packages": {
+            "arch": "python"
+        }
     },
     {
         "id": "nodejs",
@@ -132,7 +134,10 @@
         "category": "Development",
         "package_type": "native",
         "package_name": "docker",
-        "packages": {"fedora": "moby-engine", "debian": "docker.io"}
+        "packages": {
+            "fedora": "moby-engine",
+            "debian": "docker.io"
+        }
     },
     {
         "id": "postman",
@@ -240,9 +245,14 @@
         "scripts": {
             "fedora": "gaming_fedora.sh",
             "debian": "gaming_debian.sh",
-            "arch": "gaming_arch.sh"
+            "arch": "gaming_arch.sh",
+            "suse": "gaming_suse.sh"
         },
-        "check": ["lutris", "mangohud", "gamescope"]
+        "check": [
+            "lutris",
+            "mangohud",
+            "gamescope"
+        ]
     },
     {
         "id": "vlc",
@@ -339,7 +349,9 @@
         "category": "Productivity",
         "package_type": "native",
         "package_name": "libreoffice",
-        "packages": {"arch": "libreoffice-fresh"}
+        "packages": {
+            "arch": "libreoffice-fresh"
+        }
     },
     {
         "id": "thunderbird",
