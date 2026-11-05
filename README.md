@@ -544,10 +544,10 @@ flowchart LR
 | Arch | `pacman` | Arch, CachyOS, Manjaro, EndeavourOS, Garuda |
 | openSUSE | `zypper` | openSUSE Leap / Tumbleweed |
 
-Native and Flatpak installs work on all four. Gaming scripts currently target
-Fedora, Debian/Ubuntu and Arch families; openSUSE and immutable systems
-(Fedora Silverblue/Kinoite, openSUSE MicroOS) need `rpm-ostree`/`transactional-update`
-handling and are on the roadmap.
+Native and Flatpak installs work on all four families, and gaming scripts are
+available for Fedora, Debian/Ubuntu, Arch and openSUSE. Immutable systems
+(Fedora Silverblue/Kinoite, openSUSE MicroOS) need `rpm-ostree` /
+`transactional-update` handling and remain on the roadmap.
 
 ## Permissions & security
 
@@ -675,9 +675,9 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | Host | Fedora 44, GNOME on Wayland |
 | Manager | `dnf`, Flatpak installed, Snap absent |
 | Privilege | `pkexec` (polkit) |
-| Checks | 13/13 unit tests, 4/4 gaming scripts (`bash -n` + `--dry-run`), 55/55 resolved install commands, `--updates` smoke |
+| Checks | 32/32 unit tests, shell syntax checks for all gaming scripts, host-family gaming `--dry-run`, 55/55 resolved install commands, `--updates` smoke |
 | Live test | `pkexec dnf install -y htop` → polkit prompt → `Complete!` → *Installed* badge; `bash install.sh` from a clean clone |
-| Packaging | AppImage + Flatpak (experimental) rebuilt with the project logo; Flatpak delegates to the host |
+| Packaging | Flatpak v1.2.0 (experimental) published with `SHA256SUMS`; AppImage is still the v1.0.0 build |
 
 
 ## Credits

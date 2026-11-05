@@ -89,12 +89,12 @@ class SystemInfo:
             return ["flatpak-spawn", "--host", "--directory=/"] + list(cmd)
         return list(cmd)
 
-    def _host_run(self, cmd):
+    def _host_run(self, cmd, timeout=10):
         """Corre um comando no host (ou localmente fora do Flatpak)."""
         if self.is_flatpak and self.has_flatpak_spawn:
             cmd = ["flatpak-spawn", "--host", "--directory=/"] + list(cmd)
         return subprocess.run(
-            cmd, capture_output=True, text=True, timeout=10,
+            cmd, capture_output=True, text=True, timeout=timeout,
         )
 
     def _host_has(self, binary):
@@ -391,7 +391,8 @@ class SystemInfo:
     def available_updates(self, timeout=60):
         """Lista (apenas consulta, sem instalar) os pacotes com atualização.
 
-        Devolve uma lista de nomes de pacote. Nunca executa atualizações.
+        Devolve uma lista de nomes de pacote. Erros de consulta são lançados
+        para que CLI e GUI os distingam de uma lista vazia. Nunca atualiza.
         """
         pm = self.package_manager
         cmd = None
@@ -404,14 +405,17 @@ class SystemInfo:
         elif pm == "zypper":
             cmd = ["zypper", "list-updates"]
         if not cmd:
-            return []
-
-        try:
-            result = self._host_run(cmd) if self.is_flatpak else subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout,
+            raise RuntimeError(
+                f"Update checking is not supported for package manager {pm or 'unknown'}."
             )
-        except Exception:
-            return []
+
+        result = self._host_run(cmd, timeout=timeout) if self.is_flatpak else subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout,
+        )
+        if result.returncode != 0 and not (pm == "dnf" and result.returncode == 100):
+            details = (result.stderr or result.stdout or "").strip()
+            message = f"{pm} update check failed (exit {result.returncode})"
+            raise RuntimeError(f"{message}: {details}" if details else message)
 
         ARCH_SUFFIXES = (".x86_64", ".i686", ".noarch", ".aarch64", ".armv7hl")
         names = []
@@ -428,6 +432,18 @@ class SystemInfo:
             # pacman: "pkg oldver -> newver"
             if pm == "pacman" and " -> " in line:
                 names.append(line.split()[0].strip())
+                continue
+            # zypper: status | repository | name | current | available | arch
+            if pm == "zypper":
+                if "|" not in line:
+                    continue
+                columns = [column.strip() for column in line.split("|")]
+                if len(columns) < 6:
+                    continue
+                name = columns[2]
+                if not name or name.lower() == "name" or set(name) <= {"-", "+"}:
+                    continue
+                names.append(name)
                 continue
             parts = line.split()
             if len(parts) >= 1:

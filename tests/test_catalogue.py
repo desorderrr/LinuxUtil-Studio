@@ -200,6 +200,59 @@ class ResolutionTests(unittest.TestCase):
                 info._privilege_tool = "sudo"
                 self.assertEqual(info.get_remove_commands(app), [command])
 
+    def test_available_updates_parses_zypper_table_rows(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "zypper"
+        info.is_flatpak = False
+        output = (
+            "S | Repository | Name | Current Version | Available Version | Arch\n"
+            "--+------------+------+-----------------+-------------------+-----\n"
+            "v | repo-oss | mesa | 1 | 2 | x86_64\n"
+            "i | repo-oss | lutris | 1 | 2 | x86_64\n"
+        )
+        with mock.patch(
+            "core.system_info.subprocess.run",
+            return_value=mock.Mock(returncode=0, stdout=output, stderr=""),
+        ):
+            self.assertEqual(info.available_updates(), ["mesa", "lutris"])
+
+    def test_available_updates_accepts_dnf_update_exit_code(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "dnf"
+        info.is_flatpak = False
+        with mock.patch(
+            "core.system_info.subprocess.run",
+            return_value=mock.Mock(
+                returncode=100,
+                stdout="mesa.x86_64 1 2 updates\n",
+                stderr="",
+            ),
+        ):
+            self.assertEqual(info.available_updates(), ["mesa"])
+
+    def test_available_updates_reports_command_errors(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "zypper"
+        info.is_flatpak = False
+        with mock.patch(
+            "core.system_info.subprocess.run",
+            return_value=mock.Mock(returncode=4, stdout="", stderr="repository unavailable"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "repository unavailable"):
+                info.available_updates()
+
+    def test_gaming_pack_installed_check_uses_only_required_tools(self):
+        installer = Installer()
+        app = next(app for app in load_catalogue() if app["id"] == "gaming-pack")
+        self.assertEqual(app["check"], ["lutris", "mangohud"])
+        with mock.patch.object(
+            installer.sys_info,
+            "get_check_command",
+            side_effect=lambda item: ["check", item["package_name"]],
+        ), mock.patch.object(installer.sys_info, "host_wrap", side_effect=lambda cmd: cmd), \
+                mock.patch.object(installer, "_command_ok", return_value=True):
+            self.assertTrue(installer.is_installed(app))
+
     def test_flatpak_remove_preserves_app_data_by_default(self):
         info = SystemInfo.__new__(SystemInfo)
         info.has_flatpak = True
@@ -363,6 +416,42 @@ class ScriptTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("dnf remove --no-autoremove", result.stdout)
+
+    def test_suse_pack_recognizes_installed_packages_and_skips_optional_missing(self):
+        script = os.path.join(ROOT, "scripts", "gaming_suse.sh")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zypper = os.path.join(temp_dir, "zypper")
+            with open(zypper, "w", encoding="utf-8") as handle:
+                handle.write(
+                    "#!/bin/sh\n"
+                    "if [ \"$1\" = search ]; then\n"
+                    "  if [ \"$3\" != gamescope ]; then\n"
+                    "    printf '%s\\n' 'S | Name | Summary | Type'\n"
+                    "    printf '%s\\n' '--+------+---------+-------'\n"
+                    "    printf 'i | %s | test | package\\n' \"$3\"\n"
+                    "  fi\n"
+                    "fi\n"
+                    "exit 0\n"
+                )
+            for command in ("flatpak", "lutris", "mangohud"):
+                command_path = os.path.join(temp_dir, command)
+                with open(command_path, "w", encoding="utf-8") as handle:
+                    handle.write("#!/bin/sh\nexit 0\n")
+                os.chmod(command_path, 0o755)
+            os.chmod(zypper, 0o755)
+
+            result = subprocess.run(
+                ["bash", script],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env={"PATH": temp_dir + os.pathsep + os.environ["PATH"]},
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("not-available:gamescope", result.stdout)
+        self.assertNotIn("not-available:lutris", result.stdout)
+        self.assertIn("Gaming pack ready", result.stdout)
 
 
 if __name__ == "__main__":

@@ -171,9 +171,13 @@ def main():
     if args.updates:
         info = SystemInfo()
         print(f"--- Available updates ({info.package_manager}) ---")
-        ups = info.available_updates()
+        try:
+            ups = info.available_updates()
+        except (OSError, subprocess.SubprocessError, RuntimeError) as error:
+            print(f"Could not check for updates: {error}", file=sys.stderr)
+            return 1
         if not ups:
-            print("No updates available (or could not query).")
+            print("No updates available.")
             return 0
         for u in ups:
             print(u)

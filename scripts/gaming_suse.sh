@@ -38,7 +38,16 @@ skip() { FAILED+=("$1"); printf '    [!] skipped: %s\n' "$1"; }
 
 # Deteta se um pacote existe nos repositórios configurados (sem instalar).
 pkg_available() {
-    zypper search -x "$1" 2>/dev/null | grep -qE '^[[:space:]]*[|]?[[:space:]]*i?\.?[[:space:]]*'"$1"'[[:space:]]'
+    local output column
+    output="$(zypper search -x "$1" 2>/dev/null)" || return 1
+    while IFS='|' read -r -a columns; do
+        for column in "${columns[@]}"; do
+            column="${column#"${column%%[![:space:]]*}"}"
+            column="${column%"${column##*[![:space:]]}"}"
+            [[ "$column" == "$1" ]] && return 0
+        done
+    done <<< "$output"
+    return 1
 }
 
 install_native() {

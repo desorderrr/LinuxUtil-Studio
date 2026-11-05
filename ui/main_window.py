@@ -77,13 +77,16 @@ class StatusWorker(QThread):
 class UpdateWorker(QThread):
     """Consulta (sem instalar) os pacotes com atualização disponível."""
     done = Signal(list)
+    failed = Signal(str)
 
     def run(self):
         try:
             info = SystemInfo()
-            self.done.emit(info.available_updates())
-        except Exception:
-            self.done.emit([])
+            updates = info.available_updates()
+        except (OSError, subprocess.SubprocessError, RuntimeError) as error:
+            self.failed.emit(str(error))
+            return
+        self.done.emit(updates)
 
 
 # ----------------------------------------------------------------------
@@ -496,13 +499,23 @@ class MainWindow(QMainWindow):
         self.updates_btn.setText("Checking...")
         self.update_worker = UpdateWorker()
         self.update_worker.done.connect(self.on_updates_found)
+        self.update_worker.failed.connect(self.on_updates_failed)
         self.update_worker.start()
+
+    def on_updates_failed(self, message):
+        self.updates_btn.setEnabled(True)
+        self.updates_btn.setText("Updates available")
+        QMessageBox.warning(
+            self,
+            "Could not check for updates",
+            message,
+        )
 
     def on_updates_found(self, updates):
         self.updates_btn.setEnabled(True)
         self.updates_btn.setText("Updates available")
         if not updates:
-            QMessageBox.information(self, "Updates", "No updates available (or could not query).")
+            QMessageBox.information(self, "Updates", "No updates available.")
             return
         text = "\n".join(f"• {u}" for u in updates[:200])
         if len(updates) > 200:

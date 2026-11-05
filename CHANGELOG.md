@@ -6,6 +6,16 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Update checks parse the zypper table correctly and report command failures
+  separately from a successful check with no available updates.
+- The Gaming Pack installed check now matches its required core tools, not
+  optional `gamescope`; openSUSE package detection also recognizes installed
+  packages in zypper search results.
+- README distribution, test-count and release-packaging details match the
+  shipped openSUSE pack and v1.2.0 assets.
+
 ## [1.2.0] - 2026-11-05
 
 ### Added
