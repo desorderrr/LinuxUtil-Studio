@@ -249,6 +249,77 @@ class ResolutionTests(unittest.TestCase):
             [["pkexec", "pacman", "-S", "--noconfirm", "sample"]],
         )
 
+    def test_immutable_detection_prefers_ostree_boot_marker(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.is_flatpak = False
+        with mock.patch.object(
+            SystemInfo,
+            "_host_has",
+            side_effect=lambda binary: binary in {"rpm-ostree", "transactional-update"},
+        ), mock.patch.object(SystemInfo, "_host_path_exists", return_value=True):
+            self.assertEqual(info._detect_immutable(), "rpm-ostree")
+
+    def test_immutable_detection_ignores_rpm_ostree_without_boot_marker(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.is_flatpak = False
+        with mock.patch.object(
+            SystemInfo, "_host_has", side_effect=lambda binary: binary == "rpm-ostree"
+        ), mock.patch.object(SystemInfo, "_host_path_exists", return_value=False):
+            self.assertIsNone(info._detect_immutable())
+
+    def test_native_install_layers_with_rpm_ostree(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "dnf"
+        info.immutable = "rpm-ostree"
+        info._privilege_tool = "pkexec"
+        app = {"package_type": "native", "package_name": "htop"}
+        self.assertEqual(
+            info.get_install_commands(app),
+            [["pkexec", "rpm-ostree", "install", "--idempotent", "htop"]],
+        )
+        self.assertEqual(
+            info.get_remove_commands(app),
+            [["pkexec", "rpm-ostree", "uninstall", "--idempotent", "htop"]],
+        )
+
+    def test_native_install_uses_transactional_update(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "zypper"
+        info.immutable = "transactional-update"
+        info._privilege_tool = "pkexec"
+        app = {"package_type": "native", "package_name": "htop"}
+        self.assertEqual(
+            info.get_install_commands(app),
+            [[
+                "pkexec", "transactional-update", "--non-interactive",
+                "pkg", "install", "-y", "htop",
+            ]],
+        )
+        self.assertEqual(
+            info.get_remove_commands(app),
+            [[
+                "pkexec", "transactional-update", "--non-interactive",
+                "pkg", "remove", "-y", "htop",
+            ]],
+        )
+
+    def test_vendor_apps_fall_back_to_flatpak_on_immutable(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "dnf"
+        info.is_flatpak = False
+        info.has_flatpak = True
+        info.aur_helpers = []
+        info.immutable = "rpm-ostree"
+        app = next(item for item in load_catalogue() if item["id"] == "vscode")
+        self.assertEqual(info.resolve_package_type(app), "flatpak")
+
+    def test_gaming_packs_are_unavailable_on_immutable(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "dnf"
+        info.immutable = "rpm-ostree"
+        app = next(item for item in load_catalogue() if item["id"] == "gaming-pack")
+        self.assertIsNone(info.resolve_package_type(app))
+
     def test_vendor_apps_use_aur_when_helper_is_available(self):
         apps = load_catalogue()
         expected = {
@@ -455,6 +526,39 @@ class DryRunTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "error")
         self.assertIn("cannot be removed automatically", result["message"])
+
+
+class ImmutableTests(unittest.TestCase):
+    def _installer(self, immutable="rpm-ostree"):
+        installer = Installer.__new__(Installer)
+        installer.sys_info = mock.Mock()
+        installer.sys_info.immutable = immutable
+        return installer
+
+    def test_native_install_reports_reboot_required(self):
+        installer = self._installer()
+        installer.sys_info.get_install_commands.return_value = [
+            ["rpm-ostree", "install", "--idempotent", "htop"]
+        ]
+        installer.sys_info.resolve_package_type.return_value = "native"
+        app = {"id": "htop", "name": "htop", "package_type": "native"}
+        with mock.patch.object(
+            installer,
+            "_execute_commands",
+            return_value={"status": "success", "output": []},
+        ):
+            result = installer.run_install(app)
+        self.assertEqual(result["status"], "success")
+        self.assertIn("Reboot", result["message"])
+
+    def test_gaming_pack_explains_immutable_limitation(self):
+        installer = self._installer()
+        installer.sys_info.get_install_commands.return_value = []
+        installer.sys_info.resolve_package_type.return_value = None
+        app = {"id": "gaming-pack", "name": "Gaming Pack", "package_type": "script"}
+        result = installer.run_install(app)
+        self.assertEqual(result["status"], "error")
+        self.assertIn("writable system package manager", result["message"])
 
 
 class ScriptTests(unittest.TestCase):

@@ -482,6 +482,8 @@ class MainWindow(QMainWindow):
         text = f"{len(self.catalogue)} apps · {len(self.installed_state)} installed"
         if self.installer.sys_info.family == "arch" and self.installer.sys_info.aur_helpers:
             text += f" · AUR: {', '.join(self.installer.sys_info.aur_helpers)}"
+        if self.installer.sys_info.immutable:
+            text += f" · immutable: {self.installer.sys_info.immutable}"
         self.brand_sub.setText(text)
 
     # ------------------------------------------------------------------

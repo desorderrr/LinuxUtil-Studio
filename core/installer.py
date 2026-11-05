@@ -76,6 +76,11 @@ class Installer:
             return f"{name} needs Snap, which is not installed on this system."
         if app.get("package_type") == "vendor" and package_type is None:
             return f"No supported vendor installer or fallback is available for {name}."
+        if app.get("package_type") == "script" and self.sys_info.immutable:
+            return (
+                f"{name} is a gaming pack and needs a writable system package "
+                "manager; Flatpak apps remain available on immutable systems."
+            )
         if package_type == "script":
             family = self.sys_info.family or "this distro"
             return f"No setup script available for {family}."
@@ -132,9 +137,15 @@ class Installer:
                 "dry_run": True,
             }
 
+        message = f"Successfully installed {name}"
+        if (
+            self.sys_info.immutable
+            and self.sys_info.resolve_package_type(app) == "native"
+        ):
+            message += " Reboot to apply the layered package."
         return {
             "status": "success",
-            "message": f"Successfully installed {name}",
+            "message": message,
             "output": result["output"],
         }
 
@@ -260,8 +271,14 @@ class Installer:
         if result["status"] != "success":
             return result
 
+        message = f"Successfully removed {name}"
+        if (
+            self.sys_info.immutable
+            and self.sys_info.resolve_package_type(app) == "native"
+        ):
+            message += " Reboot to apply the removal."
         return {
             "status": "success",
-            "message": f"Successfully removed {name}",
+            "message": message,
             "output": result["output"],
         }

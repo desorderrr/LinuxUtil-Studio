@@ -29,6 +29,7 @@ class SystemInfo:
         self.distro_like = []
         self.distro = self._get_distro()
         self.package_manager = self._get_package_manager()
+        self.immutable = self._detect_immutable()
         # Dentro do sandbox o binário `flatpak` pode não existir; o próprio app
         # já é Flatpak, por isso assumimos que o host tem Flatpak.
         self.has_flatpak = self.is_flatpak or shutil.which("flatpak") is not None
@@ -102,6 +103,25 @@ class SystemInfo:
             return self._host_run(["sh", "-c", f"command -v {binary}"]).returncode == 0
         except Exception:
             return False
+
+    def _host_path_exists(self, path):
+        try:
+            return self._host_run(["test", "-e", path]).returncode == 0
+        except Exception:
+            return False
+
+    def _detect_immutable(self):
+        """Deteta sistemas de raiz imutável, que precisam de outro fluxo.
+
+        ``rpm-ostree`` em Fedora Silverblue/Kinoite e ``transactional-update``
+        em openSUSE MicroOS não instalam pacotes diretamente no sistema em
+        execução: criam uma nova imagem/deployment e pedem reboot.
+        """
+        if self._host_has("rpm-ostree") and self._host_path_exists("/run/ostree-booted"):
+            return "rpm-ostree"
+        if self._host_has("transactional-update"):
+            return "transactional-update"
+        return None
 
     def _detect_aur_helpers(self):
         """Detecta helpers AUR (yay/paru) no Arch, sem os instalar.
@@ -231,6 +251,10 @@ class SystemInfo:
 
     def resolve_package_type(self, app):
         package_type = app.get("package_type", "native")
+        immutable = getattr(self, "immutable", None)
+        if package_type == "script":
+            # Gaming packs assume a writable root and a normal dnf/zypper.
+            return None if immutable else "script"
         if package_type != "vendor":
             return package_type
         if (
@@ -242,7 +266,8 @@ class SystemInfo:
         machine = platform.machine().lower()
         supported_arches = {"x86_64", "amd64", "aarch64", "arm64"}
         if (
-            not self.is_flatpak
+            not immutable
+            and not self.is_flatpak
             and self.family in VENDOR_APP_FAMILIES.get(app["id"], set())
             and machine in supported_arches
         ):
@@ -325,6 +350,16 @@ class SystemInfo:
                 self.aur_helpers[0], "-S", "--needed", "--noconfirm", package_name,
             ]]
         priv = self.privilege_tool
+        immutable = getattr(self, "immutable", None)
+        if immutable == "rpm-ostree":
+            return [[
+                priv, "rpm-ostree", "install", "--idempotent", package_name,
+            ]]
+        if immutable == "transactional-update":
+            return [[
+                priv, "transactional-update", "--non-interactive",
+                "pkg", "install", "-y", package_name,
+            ]]
         if pm == "apt":
             return [
                 [priv, "apt-get", "update"],
@@ -365,6 +400,16 @@ class SystemInfo:
             return []
         pm = self.package_manager
         priv = self.privilege_tool
+        immutable = getattr(self, "immutable", None)
+        if immutable == "rpm-ostree":
+            return [[
+                priv, "rpm-ostree", "uninstall", "--idempotent", package_name,
+            ]]
+        if immutable == "transactional-update":
+            return [[
+                priv, "transactional-update", "--non-interactive",
+                "pkg", "remove", "-y", package_name,
+            ]]
         if pm == "apt":
             return [[priv, "apt-get", "remove", "-y", package_name]]
         if pm == "dnf":

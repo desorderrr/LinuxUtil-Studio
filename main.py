@@ -26,6 +26,8 @@ def print_system_info():
     print(f"Snap           : {'yes' if info.has_snap else 'no'}")
     if info.family == "arch":
         print(f"AUR helpers    : {', '.join(info.aur_helpers) if info.aur_helpers else 'none (yay/paru not detected)'}")
+    if info.immutable:
+        print(f"Immutable      : {info.immutable} (native installs require a reboot)")
     print(f"Privilege tool : {info.privilege_tool}")
     print(f"GUI available  : {'yes' if GUI_AVAILABLE else 'no (install PySide6)'}")
 
