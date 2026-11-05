@@ -6,6 +6,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-05
+
 ### Fixed
 
 - Update checks parse the zypper table correctly and report command failures

@@ -677,7 +677,7 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | Privilege | `pkexec` (polkit) |
 | Checks | 32/32 unit tests, shell syntax checks for all gaming scripts, host-family gaming `--dry-run`, 55/55 resolved install commands, `--updates` smoke |
 | Live test | `pkexec dnf install -y htop` → polkit prompt → `Complete!` → *Installed* badge; `bash install.sh` from a clean clone |
-| Packaging | Flatpak v1.2.0 (experimental) published with `SHA256SUMS`; AppImage is still the v1.0.0 build |
+| Packaging | Flatpak v1.2.1 (experimental) published with `SHA256SUMS`; AppImage is still the v1.0.0 build |
 
 
 ## Credits
