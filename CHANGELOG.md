@@ -4,6 +4,21 @@ All notable changes to LinuxUtil Studio are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Immutable system support: native packages are layered with `rpm-ostree` on
+  Fedora Silverblue/Kinoite and installed through `transactional-update` on
+  openSUSE MicroOS. Flatpak remains the default; gaming packs and vendor
+  repository installers are disabled because the root filesystem is read-only.
+  Native changes require a reboot.
+
+### Changed
+
+- Distribution policy is Flatpak + source. The v1.0.0 AppImage is legacy and is
+  no longer rebuilt; tagged releases publish the Flatpak bundle and source.
+
 ## [1.3.0] - 2026-11-05
 
 ### Added

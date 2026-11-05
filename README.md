@@ -27,7 +27,8 @@
 | :--- | :--- |
 | **Catalogue** | 55 apps in 9 categories, each with its own package name |
 | **Managers** | `apt` · `dnf` · `pacman` · `zypper` · Flatpak · Snap |
-| **Gaming** | One-click packs for Fedora, Ubuntu/Debian and Arch/CachyOS |
+| **Immutable** | `rpm-ostree` (Silverblue/Kinoite) · `transactional-update` (MicroOS) |
+| **Gaming** | One-click packs for Fedora, Ubuntu/Debian, Arch/CachyOS and openSUSE |
 | **Interface** | Python 3 + PySide6 (Qt 6), light & dark themes, bundled brand logos |
 | **Safety** | No shell, no stored passwords, `--dry-run` preview for every setup script |
 | **License** | MIT |
@@ -169,20 +170,11 @@ bash install.sh
 virtualenv, installs PySide6, and drops a `LinuxUtil Studio` shortcut in your
 application menu. Works regardless of your current working directory.
 
-### Option 2 — AppImage
+The project distributes **Flatpak + source**. The AppImage from the v1.0.0
+release is legacy: it is no longer rebuilt and does not receive fixes. Use the
+Flatpak or the source installer instead.
 
-Download the AppImage from the
-[v1.0.0 release](https://github.com/desorderrr/LinuxUtil-Studio/releases/download/v1.0.0/LinuxUtil_Studio-x86_64.AppImage):
-
-```bash
-chmod +x LinuxUtil_Studio-x86_64.AppImage
-./LinuxUtil_Studio-x86_64.AppImage
-```
-
-This binary is from the initial release; use the source installer for the
-latest changes.
-
-### Option 3 — Flatpak (experimental)
+### Option 2 — Flatpak (experimental)
 
 > **Experimental.** The Flatpak runs the UI inside the sandbox but delegates
 > package installation to the host through `flatpak-spawn --host`. It is
@@ -210,7 +202,7 @@ automatically.
 Requirements: `flatpak-builder` and `org.freedesktop.Sdk//25.08`.
 The Flatpak remains experimental; see the caveat above before using it.
 
-### Option 4 — From source
+### Option 3 — From source
 
 ```bash
 git clone https://github.com/desorderrr/LinuxUtil-Studio.git
@@ -247,6 +239,8 @@ password, through the desktop's own polkit dialog.
 3. **Authenticate.** Your desktop shows its standard password dialog (polkit).
    The app never sees or stores the password.
 4. **Done.** The card turns into *Reinstall* and gets the *Installed* badge.
+   On immutable systems, native packages stay *pending* until you reboot into
+   the new deployment or snapshot.
 
 Use **Cancel installation** to stop the active command if needed. Package
 changes completed before cancellation are not rolled back.
@@ -533,11 +527,12 @@ flowchart LR
    use their own configured privilege escalation; the app never builds AUR
    packages as root.
 4. **AUR on Arch.** If `yay`, `paru`, `trizen` or `pikaur` is already
-   installed, native packages use the first detected helper. Brave and VS Code
-   use their AUR packages through that helper; without one, they keep the
-   Flatpak fallback. Helpers are never installed automatically. AUR installs
-   require confirmation because their community build scripts are not audited
-   by LinuxUtil Studio.
+   installed, Brave and VS Code use their AUR packages through the first
+   detected helper; without one, they keep the Flatpak fallback. Official
+   repository packages always stay on `pacman` + `pkexec`, because helpers call
+   `sudo` internally and fail without a terminal in a GUI session. Helpers are
+   never installed automatically. AUR installs require confirmation because
+   their community build scripts are not audited by LinuxUtil Studio.
 5. **Run.** Commands are built as **argv lists** and executed with
    `subprocess.Popen`, merged stdout/stderr, streamed line by line to the UI.
 6. **Verify.** Each app has a read-only check (`rpm -q`, `dpkg -s`, `pacman -Q`,
@@ -553,9 +548,15 @@ flowchart LR
 | openSUSE | `zypper` | openSUSE Leap / Tumbleweed |
 
 Native and Flatpak installs work on all four families, and gaming scripts are
-available for Fedora, Debian/Ubuntu, Arch and openSUSE. Immutable systems
-(Fedora Silverblue/Kinoite, openSUSE MicroOS) need `rpm-ostree` /
-`transactional-update` handling and remain on the roadmap.
+available for Fedora, Debian/Ubuntu, Arch and openSUSE.
+
+On immutable systems (Fedora Silverblue/Kinoite and openSUSE MicroOS), the app
+detects the read-only root and switches the native flow: `rpm-ostree install`
+layers packages on ostree images, and `transactional-update pkg install` builds
+a new openSUSE snapshot. Both require a reboot, and a native install stays
+*pending* until then. Flatpak remains the recommended path on these systems;
+gaming packs and vendor repository installers are disabled because they assume
+a writable root.
 
 ## Permissions & security
 
@@ -668,6 +669,7 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | *Steam download is huge* | The Flatpak pulls the Steam runtime and 32-bit graphics drivers. It is a one-time cost and keeps the host clean. |
 | *A card says "Reinstall"* | The package was detected on the system. Reinstall is harmless and idempotent. |
 | *Gaming pack for openSUSE* | Available since v1.2: `scripts/gaming_suse.sh` (zypper). Reports packages that are not in the configured repositories instead of failing. |
+| *Install on Silverblue / Kinoite / MicroOS* | Native packages are layered with `rpm-ostree` or built through `transactional-update`, then require a reboot. Prefer Flatpak apps; gaming packs and vendor repository installers are disabled on immutable systems. |
 | *Nothing appears / no window on Wayland* | Run from a terminal and check the output; the app needs `WAYLAND_DISPLAY` or `DISPLAY` and a Qt platform plugin. |
 
 ## Roadmap
@@ -680,8 +682,8 @@ for f in scripts/*.sh; do bash -n "$f"; done
 - [x] AUR helper detection on Arch (yay/paru/...) — reported, never auto-installed
 - [x] "Updates available" view (read-only listing, `--updates`)
 - [x] AUR helper usage on Arch (helpers only for AUR packages; native stays on `pacman` + `pkexec`; helpers are never installed)
-- [ ] Immutable systems (`rpm-ostree`, `transactional-update`) — deferred: different flows and risk profile
-- [ ] Flatpak/AppImage distribution policy: keep both, or recommend Flatpak + source only
+- [x] Immutable systems: `rpm-ostree` layering on Silverblue/Kinoite and `transactional-update` on MicroOS; Flatpak stays the default and native changes require a reboot
+- [x] Distribution policy: Flatpak + source; the v1.0.0 AppImage is legacy and no longer rebuilt
 
 ## Verified on
 
@@ -690,10 +692,11 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | Host | Fedora 44, GNOME on Wayland |
 | Manager | `dnf`, Flatpak installed, Snap absent |
 | Privilege | `pkexec` (polkit) |
-| Checks | 37/37 unit tests, shell syntax checks for all gaming scripts, host-family gaming `--dry-run`, 55/55 resolved install commands, AUR helper routing, `--updates` smoke |
+| Checks | 45/45 unit tests, shell syntax checks for all gaming scripts, host-family gaming `--dry-run`, 55/55 resolved install commands, AUR helper routing, immutable command routing, `--updates` smoke |
 | Live test | `pkexec dnf install -y htop` → polkit prompt → `Complete!` → *Installed* badge; `bash install.sh` from a clean clone |
 | AUR path | Simulated yay/paru detection covered by unit tests; live validation on Arch/CachyOS still pending |
-| Packaging | Flatpak v1.3.0 (experimental) published with `SHA256SUMS`; AppImage is still the v1.0.0 build |
+| Immutable path | Command routing covered by unit tests; live validation on Silverblue/Kinoite and MicroOS still pending |
+| Packaging | Flatpak v1.3.0 (experimental) published with `SHA256SUMS`; AppImage is legacy (v1.0.0) and no longer rebuilt |
 
 
 ## Credits
