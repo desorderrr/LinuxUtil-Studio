@@ -572,7 +572,9 @@ available for Fedora, Debian/Ubuntu, Arch and openSUSE. Immutable systems
 - **Read-only detection.** Installed checks only query package metadata.
 - **AUR packages are community-maintained.** They are used only when a helper
   is already installed; the app asks before installing one and never installs
-  an AUR helper itself.
+  an AUR helper itself. Official repository packages keep using `pacman` through
+  `pkexec`, so a GUI session without a terminal still gets a polkit prompt
+  instead of a failing `sudo`.
 - **Network** is used by the package manager, Flathub and Flatpak — not by the
   app itself.
 
@@ -603,6 +605,8 @@ scripts/
   gaming_fedora.sh          # Fedora / Nobara / RHEL
   gaming_debian.sh          # Ubuntu / Debian / Mint / Pop!_OS
   gaming_arch.sh            # Arch / CachyOS / Manjaro / EndeavourOS
+  gaming_suse.sh            # openSUSE Leap / Tumbleweed (zypper)
+  vendor_apps.sh            # VS Code / Brave official vendor repositories
 
 tests/
   test_catalogue.py         # catalogue, logos, resolution and script dry-run tests
@@ -675,7 +679,7 @@ for f in scripts/*.sh; do bash -n "$f"; done
 - [x] Desktop entry and app icon, so it launches from the menu
 - [x] AUR helper detection on Arch (yay/paru/...) — reported, never auto-installed
 - [x] "Updates available" view (read-only listing, `--updates`)
-- [x] AUR helper usage on Arch (uses detected helpers; never installs them)
+- [x] AUR helper usage on Arch (helpers only for AUR packages; native stays on `pacman` + `pkexec`; helpers are never installed)
 - [ ] Immutable systems (`rpm-ostree`, `transactional-update`) — deferred: different flows and risk profile
 - [ ] Flatpak/AppImage distribution policy: keep both, or recommend Flatpak + source only
 
@@ -686,9 +690,10 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | Host | Fedora 44, GNOME on Wayland |
 | Manager | `dnf`, Flatpak installed, Snap absent |
 | Privilege | `pkexec` (polkit) |
-| Checks | 32/32 unit tests, shell syntax checks for all gaming scripts, host-family gaming `--dry-run`, 55/55 resolved install commands, `--updates` smoke |
+| Checks | 37/37 unit tests, shell syntax checks for all gaming scripts, host-family gaming `--dry-run`, 55/55 resolved install commands, AUR helper routing, `--updates` smoke |
 | Live test | `pkexec dnf install -y htop` → polkit prompt → `Complete!` → *Installed* badge; `bash install.sh` from a clean clone |
-| Packaging | Flatpak v1.2.1 (experimental) published with `SHA256SUMS`; AppImage is still the v1.0.0 build |
+| AUR path | Simulated yay/paru detection covered by unit tests; live validation on Arch/CachyOS still pending |
+| Packaging | Flatpak v1.3.0 (experimental) published with `SHA256SUMS`; AppImage is still the v1.0.0 build |
 
 
 ## Credits

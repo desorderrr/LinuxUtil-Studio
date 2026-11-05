@@ -4,14 +4,20 @@ All notable changes to LinuxUtil Studio are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.3.0] - 2026-11-05
 
 ### Added
 
-- Arch installs prefer an already detected AUR helper. Brave and VS Code use
-  their AUR packages when a helper is present, with Flatpak fallbacks otherwise;
-  AUR installs require explicit confirmation and helpers are never installed
-  automatically.
+- Arch installs prefer an already detected AUR helper for AUR packages. Brave
+  and VS Code use their AUR packages when a helper is present, with Flatpak
+  fallbacks otherwise; AUR installs require explicit confirmation and helpers
+  are never installed automatically.
+
+### Fixed
+
+- Official Arch repository packages keep using `pacman` through `pkexec` even
+  when an AUR helper is installed. Helpers such as yay/paru call `sudo`
+  internally, which fails without a terminal in a GUI session.
 
 ## [1.2.1] - 2026-11-05
 
