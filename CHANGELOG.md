@@ -6,6 +6,23 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-05
+
+### Added
+
+- Gaming pack for openSUSE (`scripts/gaming_suse.sh`): zypper-based, with
+  `--dry-run` preview and detection of packages that are not available in the
+  configured repositories.
+- AUR helper detection on Arch (yay, paru, trizen, pikaur): reported in the
+  system info and the GUI sidebar, never auto-installed.
+- "Updates available" view: read-only listing of upgradable system packages
+  (`--updates` and a GUI button), without executing any update.
+
+### Changed
+
+- README roadmap and verified-on data refreshed to reflect the shipped
+  features (desktop entry/icon, openSUSE pack, AUR detection, updates view).
+
 ## [1.1.0] - 2026-11-04
 
 ### Fixed

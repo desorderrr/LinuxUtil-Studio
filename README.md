@@ -652,7 +652,7 @@ for f in scripts/*.sh; do bash -n "$f"; done
 | *Gamescope missing after the Ubuntu pack* | Not packaged in older Ubuntu releases. The pack reports it as skipped and continues. |
 | *Steam download is huge* | The Flatpak pulls the Steam runtime and 32-bit graphics drivers. It is a one-time cost and keeps the host clean. |
 | *A card says "Reinstall"* | The package was detected on the system. Reinstall is harmless and idempotent. |
-| *Gaming pack for openSUSE* | Available since v1.1: `scripts/gaming_suse.sh` (zypper). Reports packages that are not in the configured repositories instead of failing. |
+| *Gaming pack for openSUSE* | Available since v1.2: `scripts/gaming_suse.sh` (zypper). Reports packages that are not in the configured repositories instead of failing. |
 | *Nothing appears / no window on Wayland* | Run from a terminal and check the output; the app needs `WAYLAND_DISPLAY` or `DISPLAY` and a Qt platform plugin. |
 
 ## Roadmap
