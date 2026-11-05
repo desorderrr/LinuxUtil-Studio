@@ -316,7 +316,11 @@ class SystemInfo:
 
         package_name = self.resolve_package_name(app)
         pm = self.package_manager
-        if pm == "pacman" and getattr(self, "aur_helpers", []):
+        # Só os pacotes realmente do AUR passam pelo helper. Os pacotes dos
+        # repositórios oficiais continuam com pacman + pkexec: yay/paru chamam
+        # sudo internamente e, numa app GUI sem terminal, esse pedido de
+        # password falha ("a terminal is required").
+        if package_type == "aur" and getattr(self, "aur_helpers", []):
             return [[
                 self.aur_helpers[0], "-S", "--needed", "--noconfirm", package_name,
             ]]

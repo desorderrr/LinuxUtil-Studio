@@ -205,14 +205,37 @@ class ResolutionTests(unittest.TestCase):
                 info._privilege_tool = "sudo"
                 self.assertEqual(info.get_remove_commands(app), [command])
 
-    def test_arch_install_prefers_detected_aur_helper(self):
+    def test_arch_native_install_keeps_pkexec_even_with_aur_helper(self):
+        # yay/paru call sudo internally; in a GUI session without a terminal
+        # that fails. Official repository packages must stay on pacman + pkexec.
         info = SystemInfo.__new__(SystemInfo)
         info.package_manager = "pacman"
         info.aur_helpers = ["yay", "paru"]
+        info._privilege_tool = "pkexec"
         app = {"package_type": "native", "package_name": "sample"}
         self.assertEqual(
             info.get_install_commands(app),
-            [["yay", "-S", "--needed", "--noconfirm", "sample"]],
+            [["pkexec", "pacman", "-S", "--noconfirm", "sample"]],
+        )
+
+    def test_arch_aur_install_uses_detected_helper(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "pacman"
+        info.is_flatpak = False
+        info.has_flatpak = True
+        info.aur_helpers = ["paru", "yay"]
+        app = {
+            "id": "brave",
+            "name": "Brave",
+            "package_type": "vendor",
+            "aur_package": "brave-bin",
+            "fallback_type": "flatpak",
+            "package_name": "com.brave.Browser",
+        }
+        self.assertEqual(info.resolve_package_type(app), "aur")
+        self.assertEqual(
+            info.get_install_commands(app),
+            [["paru", "-S", "--needed", "--noconfirm", "brave-bin"]],
         )
 
     def test_arch_install_without_aur_helper_uses_pacman(self):
