@@ -233,6 +233,12 @@ class SystemInfo:
         package_type = app.get("package_type", "native")
         if package_type != "vendor":
             return package_type
+        if (
+            self.family == "arch"
+            and getattr(self, "aur_helpers", [])
+            and app.get("aur_package")
+        ):
+            return "aur"
         machine = platform.machine().lower()
         supported_arches = {"x86_64", "amd64", "aarch64", "arm64"}
         if (
@@ -244,6 +250,8 @@ class SystemInfo:
         return app.get("fallback_type")
 
     def resolve_package_name(self, app):
+        if self.resolve_package_type(app) == "aur":
+            return app["aur_package"]
         if (
             app.get("package_type") == "vendor"
             and self.resolve_package_type(app) == app.get("fallback_type")
@@ -308,6 +316,10 @@ class SystemInfo:
 
         package_name = self.resolve_package_name(app)
         pm = self.package_manager
+        if pm == "pacman" and getattr(self, "aur_helpers", []):
+            return [[
+                self.aur_helpers[0], "-S", "--needed", "--noconfirm", package_name,
+            ]]
         priv = self.privilege_tool
         if pm == "apt":
             return [

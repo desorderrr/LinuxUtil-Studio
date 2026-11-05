@@ -71,7 +71,14 @@ def install(app_id, dry_run=False):
 
     installer = Installer()
     ptype = installer.sys_info.resolve_package_type(target)
-    if ptype == "vendor" and not dry_run:
+    if ptype == "aur" and not dry_run:
+        print(
+            f"Installing {target['name']} from the community AUR package "
+            f"{installer.sys_info.resolve_package_name(target)}. "
+            "Review its PKGBUILD before installing; LinuxUtil Studio does not "
+            "audit AUR packages.\n"
+        )
+    elif ptype == "vendor" and not dry_run:
         print(
             f"Installing {target['name']} from its official vendor repository "
             "(asks for your password)...\n"

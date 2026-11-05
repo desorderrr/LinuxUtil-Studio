@@ -60,11 +60,11 @@ PALETTES = {
 BADGE_COLORS = {
     "light": {
         "native": "#0a84ff", "flatpak": "#1a7f37", "snap": "#c2410c",
-        "script": "#7c3aed", "vendor": "#7c3aed",
+        "script": "#7c3aed", "vendor": "#7c3aed", "aur": "#b45309",
     },
     "dark": {
         "native": "#3d9bff", "flatpak": "#2ea043", "snap": "#e07a3f",
-        "script": "#9b7bff", "vendor": "#9b7bff",
+        "script": "#9b7bff", "vendor": "#9b7bff", "aur": "#f0ad4e",
     },
 }
 

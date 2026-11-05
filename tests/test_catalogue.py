@@ -99,6 +99,11 @@ class CatalogueTests(unittest.TestCase):
             ),
             (
                 '[{"id": "test", "name": "Test", "description": "Test", '
+                '"package_name": "test", "aur_package": ""}]',
+                "invalid 'aur_package'",
+            ),
+            (
+                '[{"id": "test", "name": "Test", "description": "Test", '
                 '"package_name": "test"}, {"id": "test", "name": "Again", '
                 '"description": "Test", "package_name": "again"}]',
                 "duplicate id",
@@ -199,6 +204,62 @@ class ResolutionTests(unittest.TestCase):
                 info.package_manager = manager
                 info._privilege_tool = "sudo"
                 self.assertEqual(info.get_remove_commands(app), [command])
+
+    def test_arch_install_prefers_detected_aur_helper(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "pacman"
+        info.aur_helpers = ["yay", "paru"]
+        app = {"package_type": "native", "package_name": "sample"}
+        self.assertEqual(
+            info.get_install_commands(app),
+            [["yay", "-S", "--needed", "--noconfirm", "sample"]],
+        )
+
+    def test_arch_install_without_aur_helper_uses_pacman(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "pacman"
+        info.aur_helpers = []
+        info._privilege_tool = "pkexec"
+        app = {"package_type": "native", "package_name": "sample"}
+        self.assertEqual(
+            info.get_install_commands(app),
+            [["pkexec", "pacman", "-S", "--noconfirm", "sample"]],
+        )
+
+    def test_vendor_apps_use_aur_when_helper_is_available(self):
+        apps = load_catalogue()
+        expected = {
+            "brave": ("brave-bin", "yay"),
+            "vscode": ("visual-studio-code-bin", "yay"),
+        }
+        for app_id, (package, helper) in expected.items():
+            with self.subTest(app=app_id):
+                info = SystemInfo.__new__(SystemInfo)
+                info.package_manager = "pacman"
+                info.is_flatpak = False
+                info.has_flatpak = True
+                info.aur_helpers = [helper]
+                app = next(item for item in apps if item["id"] == app_id)
+                self.assertEqual(info.resolve_package_type(app), "aur")
+                self.assertEqual(info.resolve_package_name(app), package)
+                self.assertEqual(
+                    info.get_install_commands(app),
+                    [[helper, "-S", "--needed", "--noconfirm", package]],
+                )
+                self.assertEqual(info.get_check_command(app), ["pacman", "-Q", package])
+
+    def test_vendor_apps_keep_flatpak_fallback_without_aur_helper(self):
+        info = SystemInfo.__new__(SystemInfo)
+        info.package_manager = "pacman"
+        info.is_flatpak = False
+        info.has_flatpak = True
+        info.aur_helpers = []
+        app = next(item for item in load_catalogue() if item["id"] == "vscode")
+        self.assertEqual(info.resolve_package_type(app), "flatpak")
+        self.assertEqual(
+            info.get_install_commands(app),
+            [["flatpak", "install", "-y", "flathub", "com.visualstudio.code"]],
+        )
 
     def test_available_updates_parses_zypper_table_rows(self):
         info = SystemInfo.__new__(SystemInfo)

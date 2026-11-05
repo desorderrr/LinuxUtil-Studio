@@ -66,4 +66,10 @@ def load_catalogue(path=None):
                     f"Catalogue entry {index} has a missing or invalid "
                     f"'fallback_package_name': {path}"
                 )
+        if "aur_package" in app and (
+            not isinstance(app["aur_package"], str) or not app["aur_package"].strip()
+        ):
+            raise ValueError(
+                f"Catalogue entry {index} has an invalid 'aur_package': {path}"
+            )
     return data

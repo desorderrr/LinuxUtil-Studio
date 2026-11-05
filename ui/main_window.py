@@ -139,6 +139,7 @@ class AppCard(QFrame):
         display_type = resolved_package_type or ptype
         self.is_script = ptype == "script"
         self.is_vendor = ptype == "vendor" and display_type == "vendor"
+        self.is_aur = display_type == "aur"
         self.badge = QLabel(
             "SCRIPT" if self.is_script else "VENDOR" if self.is_vendor else display_type.upper()
         )
@@ -182,7 +183,7 @@ class AppCard(QFrame):
             self.remove_btn.clicked.connect(lambda: remove_callback(self.app_data))
 
         self.preview_btn = None
-        if self.is_script or self.is_vendor:
+        if self.is_script or self.is_vendor or self.is_aur:
             self.preview_btn = QPushButton("Preview")
             self.preview_btn.setFixedSize(78, 32)
             self.preview_btn.setCursor(Qt.PointingHandCursor)
@@ -590,6 +591,8 @@ class MainWindow(QMainWindow):
                 return
             if ptype == "vendor" and not self._confirm_vendor(app_data):
                 return
+            if ptype == "aur" and not self._confirm_aur(app_data):
+                return
 
         self.console.clear()
         self.console.setVisible(True)
@@ -607,6 +610,11 @@ class MainWindow(QMainWindow):
         elif ptype in {"script", "vendor"}:
             self.log(
                 f"[*] Running {app_data['name']} setup...",
+                self.palette["console_cmd"],
+            )
+        elif ptype == "aur":
+            self.log(
+                f"[*] Installing {app_data['name']} from the AUR...",
                 self.palette["console_cmd"],
             )
         else:
@@ -716,6 +724,27 @@ class MainWindow(QMainWindow):
                 html.escape(vendor),
                 html.escape(family),
                 html.escape(manager),
+            ),
+            QMessageBox.Cancel | QMessageBox.Ok,
+            QMessageBox.Cancel,
+        )
+        return answer == QMessageBox.Ok
+
+    def _confirm_aur(self, app_data):
+        helper = self.installer.sys_info.aur_helpers[0]
+        package = self.installer.sys_info.resolve_package_name(app_data)
+        answer = QMessageBox.warning(
+            self,
+            "Install community AUR package?",
+            "<b>{}</b> will be installed from the community-maintained AUR "
+            "package <code>{}</code> using <b>{}</b>.<br><br>"
+            "LinuxUtil Studio does not audit AUR build scripts or their sources. "
+            "Review the package's PKGBUILD before continuing. "
+            "No AUR helper will be installed automatically.<br><br>"
+            "Continue?".format(
+                html.escape(app_data["name"]),
+                html.escape(package),
+                html.escape(helper),
             ),
             QMessageBox.Cancel | QMessageBox.Ok,
             QMessageBox.Cancel,

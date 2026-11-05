@@ -6,6 +6,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Arch installs prefer an already detected AUR helper. Brave and VS Code use
+  their AUR packages when a helper is present, with Flatpak fallbacks otherwise;
+  AUR installs require explicit confirmation and helpers are never installed
+  automatically.
+
 ## [1.2.1] - 2026-11-05
 
 ### Fixed

@@ -123,8 +123,8 @@ Notable source-review findings:
 
 | App | Upstream option | Assessment |
 | :--- | :--- | :--- |
-| Brave | Vendor-signed repositories for Debian, Fedora and openSUSE; AUR on Arch | Uses the vendor's native package where officially supported. Brave warns that its Flatpak has Chromium sandbox differences; Arch and unsupported systems retain the Flatpak fallback. |
-| Visual Studio Code | Official Microsoft `.deb`/RPM repositories and Snap; community AUR on Arch | Uses Microsoft's signed distro repository on Debian/Fedora/openSUSE. A downloaded archive is not managed by the package manager; Arch and unsupported systems retain the Flathub fallback. |
+| Brave | Vendor-signed repositories for Debian, Fedora and openSUSE; AUR on Arch | Uses the vendor's native package where officially supported. On Arch, uses `brave-bin` via a detected AUR helper; otherwise retains the Flatpak fallback. Brave warns that its Flatpak has Chromium sandbox differences. |
+| Visual Studio Code | Official Microsoft `.deb`/RPM repositories and Snap; community AUR on Arch | Uses Microsoft's signed distro repository on Debian/Fedora/openSUSE. On Arch, uses `visual-studio-code-bin` via a detected AUR helper; otherwise retains the Flathub fallback. |
 | Obsidian | Official AppImage, Snap and `.deb`; community-maintained Flatpak | The official site labels the Flatpak community-maintained. AppImage avoids adding a repository but needs separate update handling. |
 | Slack | Official RPM download and Snap | A native/vendor route is available, but needs per-distro handling; one Flatpak target remains simpler across the supported families. |
 | DBeaver | Official Debian repository and Flatpak | The upstream download page supports both; Flatpak is not inherently a worse choice here. |
@@ -527,12 +527,20 @@ flowchart LR
    picks the manager and derives the family.
 2. **Resolve.** `package_name` is overridden by `packages[family]` when present,
    and `script` entries map their family to a file in `scripts/`.
-3. **Escalate.** `sudo -n true` first: if passwordless sudo works, use it.
-   Otherwise, in a graphical session, use `pkexec` so polkit owns the password
-   prompt. There is no third option that silently fails.
-4. **Run.** Commands are built as **argv lists** and executed with
+3. **Escalate.** Commands run by the app use `sudo -n true` first: if
+   passwordless sudo works, use it. Otherwise, in a graphical session, use
+   `pkexec` so polkit owns the password prompt. AUR helpers run as the user and
+   use their own configured privilege escalation; the app never builds AUR
+   packages as root.
+4. **AUR on Arch.** If `yay`, `paru`, `trizen` or `pikaur` is already
+   installed, native packages use the first detected helper. Brave and VS Code
+   use their AUR packages through that helper; without one, they keep the
+   Flatpak fallback. Helpers are never installed automatically. AUR installs
+   require confirmation because their community build scripts are not audited
+   by LinuxUtil Studio.
+5. **Run.** Commands are built as **argv lists** and executed with
    `subprocess.Popen`, merged stdout/stderr, streamed line by line to the UI.
-5. **Verify.** Each app has a read-only check (`rpm -q`, `dpkg -s`, `pacman -Q`,
+6. **Verify.** Each app has a read-only check (`rpm -q`, `dpkg -s`, `pacman -Q`,
    `flatpak info`, `snap list`) that drives the *Installed* badge.
 
 ## Supported distributions
@@ -562,6 +570,9 @@ available for Fedora, Debian/Ubuntu, Arch and openSUSE. Immutable systems
 - **Preview cannot change the system.** `--dry-run` runs without root and only
   prints the planned commands.
 - **Read-only detection.** Installed checks only query package metadata.
+- **AUR packages are community-maintained.** They are used only when a helper
+  is already installed; the app asks before installing one and never installs
+  an AUR helper itself.
 - **Network** is used by the package manager, Flathub and Flatpak — not by the
   app itself.
 
@@ -664,8 +675,8 @@ for f in scripts/*.sh; do bash -n "$f"; done
 - [x] Desktop entry and app icon, so it launches from the menu
 - [x] AUR helper detection on Arch (yay/paru/...) — reported, never auto-installed
 - [x] "Updates available" view (read-only listing, `--updates`)
+- [x] AUR helper usage on Arch (uses detected helpers; never installs them)
 - [ ] Immutable systems (`rpm-ostree`, `transactional-update`) — deferred: different flows and risk profile
-- [ ] AUR helper *usage* (install via yay/paru when present) — after detection stabilises
 - [ ] Flatpak/AppImage distribution policy: keep both, or recommend Flatpak + source only
 
 ## Verified on

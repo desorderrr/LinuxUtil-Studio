@@ -14,6 +14,7 @@
         "category": "Internet",
         "package_type": "vendor",
         "package_name": "brave-browser",
+        "aur_package": "brave-bin",
         "fallback_type": "flatpak",
         "fallback_package_name": "com.brave.Browser"
     },
@@ -105,6 +106,7 @@
         "category": "Development",
         "package_type": "vendor",
         "package_name": "code",
+        "aur_package": "visual-studio-code-bin",
         "fallback_type": "flatpak",
         "fallback_package_name": "com.visualstudio.code"
     },
